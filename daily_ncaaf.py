@@ -15,6 +15,7 @@ from sklearn.metrics import log_loss, brier_score_loss
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import tg_delta
 import engine_ncaaf as E
 
 H = {"User-Agent": "Mozilla/5.0"}
@@ -28,6 +29,8 @@ TRAIN_LO, TRAIN_HI = 2018, 2025
 CUR_SEASON = 2026
 CAL_UNLOCK_WEEK = 4
 MIN_EDGE = 0.05
+PUSH_PER_DAY = 20        # top-N per slate day by |p_model - p_elo|
+TG_MAX_LINES = 60        # Telegram message cap; truncation is now reported, not silent
 
 def min_odds(p):
     p = min(max(float(p), 0.01), 0.99)
@@ -41,7 +44,7 @@ def load_hist():
         s = s[(s.home_division == "fbs") | (s.away_division == "fbs")]
         rows.append(s)
     g = pd.concat(rows, ignore_index=True)
-    g["date"] = pd.to_datetime(g.start_date).dt.tz_localize(None)
+    g["date"] = E.game_day(g.start_date)
     return g
 
 def fetch_2026():
@@ -77,7 +80,7 @@ def fetch_2026():
             time.sleep(0.15)
     d = pd.DataFrame(rows).drop_duplicates("game_id")
     if len(d):
-        d["date"] = pd.to_datetime(d.start_date).dt.tz_localize(None)
+        d["date"] = E.game_day(d.start_date)
     return d
 
 def run(today_str):
@@ -107,7 +110,10 @@ def run(today_str):
     os.makedirs(LOGS, exist_ok=True)
     pred_path = os.path.join(LOGS, "predictions.csv")
     log = pd.read_csv(pred_path, dtype={"game_id": str}) if os.path.exists(pred_path) else \
-        pd.DataFrame(columns=["date", "game_id", "week", "season", "home", "away", "p_home", "p_elo", "model"])
+        pd.DataFrame(columns=["date", "game_id", "week", "season", "home", "away",
+                              "p_home", "p_elo", "selected", "model"])
+    if "selected" not in log.columns:
+        log["selected"] = np.nan          # rows logged before the filter was tracked
 
     board = None
     if len(up):
@@ -121,13 +127,18 @@ def run(today_str):
                               "game_id": rows.game_id.astype(str), "week": rows.week,
                               "season": rows.season, "home": rows.home, "away": rows.away,
                               "p_home": p, "p_elo": pe, "model": "v1"})
-        log = pd.concat([log[~log.game_id.isin(board.game_id)], board], ignore_index=True)
         board = board.assign(margin_m=margins, total_m=totals, week_v=rows.week.values,
                              div=(board.p_home - board.p_elo).abs())
-        disp = board.sort_values("div", ascending=False).groupby("date").head(20) \
+        disp = board.sort_values("div", ascending=False).groupby("date").head(PUSH_PER_DAY) \
                     .sort_values(["date", "div"], ascending=[True, False])
+        # Persist which rows were pushed. Full-slate grading watches the probabilities;
+        # it is structurally blind to the selection rule, so the filter needs its own record.
+        board["selected"] = board.game_id.isin(disp.game_id).astype(int)
+        keep = ["date", "game_id", "week", "season", "home", "away", "p_home", "p_elo",
+                "selected", "model"]
+        log = pd.concat([log[~log.game_id.isin(board.game_id)], board[keep]], ignore_index=True)
         print(f"\n=== MBM NCAAF board: {len(disp)} of {len(board)} FBS games "
-              f"(top 20/day by model-vs-Elo divergence; full slate logged & graded) ===")
+              f"(top {PUSH_PER_DAY}/day by model-vs-Elo divergence; full slate logged & graded) ===")
         for _, r in disp.iterrows():
             side = f"{r.home} {-r.margin_m:+.1f}" if r.margin_m > 0 else f"{r.away} {r.margin_m:+.1f}"
             vals = (f"value: {r.home} >= {min_odds(r.p_home):.2f} / {r.away} >= {min_odds(1-r.p_home):.2f}"
@@ -143,7 +154,7 @@ def run(today_str):
     dec = log[log.result.notna() & (log.result != 0)]
     if len(dec) >= 30:
         y = (dec.result > 0).astype(int).values
-        print(f"\nrolling grade (n={len(y)}):")
+        print(f"\nrolling grade, full slate (n={len(y)}):")
         for lbl, pp in (("model v1 ", dec.p_home), ("elo floor", dec.p_elo),
                         ("base rate", pd.Series(np.full(len(y), base)))):
             pc = np.clip(pp.values.astype(float), 1e-6, 1-1e-6)
@@ -157,20 +168,54 @@ def run(today_str):
             print(f"last-200 edge vs base: {edge:+.4f}  [{'OK' if edge > 0 else 'TRIPWIRE: bench review'}]")
             if edge <= 0:
                 alerts.append("NCAAF winner")
+
+        # ---- second tripwire: the SELECTION RULE, not the model ----
+        # The rule's claim is that pushed games are where the feature layer beats the
+        # Elo floor by the most. Full-slate grading cannot see that claim at all.
+        sel = dec[dec.selected == 1]
+        uns = dec[dec.selected == 0]
+        if len(sel) >= 50 and len(uns) >= 50:
+            def edge_vs_elo(d):
+                yy = (d.result > 0).astype(int).values
+                pm_ = np.clip(d.p_home.values.astype(float), 1e-6, 1-1e-6)
+                pf_ = np.clip(d.p_elo.values.astype(float), 1e-6, 1-1e-6)
+                return log_loss(yy, pf_) - log_loss(yy, pm_), log_loss(yy, pm_)
+            e_sel, ll_sel = edge_vs_elo(sel)
+            e_uns, ll_uns = edge_vs_elo(uns)
+            print(f"\nselection rule (top {PUSH_PER_DAY}/day by divergence):")
+            print(f"  pushed     n={len(sel):>4}  LL={ll_sel:.4f}  edge vs Elo={e_sel:+.4f}")
+            print(f"  not pushed n={len(uns):>4}  LL={ll_uns:.4f}  edge vs Elo={e_uns:+.4f}")
+            ws = sel.tail(200)
+            if len(ws) >= 100:
+                e_w, _ = edge_vs_elo(ws)
+                ok = e_w > 0
+                print(f"  last-{len(ws)} pushed, edge vs Elo: {e_w:+.4f}  "
+                      f"[{'OK' if ok else 'TRIPWIRE: selection rule not beating the floor'}]")
+                if not ok:
+                    alerts.append("NCAAF selection rule")
         dec.to_csv(os.path.join(LOGS, "graded.csv"), index=False)
 
     tg, ch = os.environ.get("TG_TOKEN"), os.environ.get("TG_CHAT")
     if tg and ch and (board is not None or alerts):
+        # Gate sits AFTER the top-20 filter: only pushed games are eligible, and of those
+        # only the ones whose price moved since the last run.
+        push = {}
         if board is not None:
-            lines = []
             for _, r in disp.iterrows():
-                if r.week < CAL_UNLOCK_WEEK:
-                    lines.append(f"{r.away} @ {r.home}: {r.p_home:.3f} | CALIBRATION, no betting thru Wk3")
-                else:
-                    lines.append(f"{r.away} @ {r.home}: {r.p_home:.3f} | {r.home} >= {min_odds(r.p_home):.2f} / {r.away} >= {min_odds(1-r.p_home):.2f}")
-            txt = "\n".join(lines[:30])
-        else:
-            txt = "no FBS games this week"
+                line = (f"{r.away} @ {r.home}: {r.p_home:.3f} | CALIBRATION, no betting thru Wk3"
+                        if r.week < CAL_UNLOCK_WEEK else
+                        f"{r.away} @ {r.home}: {r.p_home:.3f} | "
+                        f"{r.home} >= {min_odds(r.p_home):.2f} / {r.away} >= {min_odds(1-r.p_home):.2f}")
+                push[r.game_id] = {"line": line, "min_odds": min_odds(r.p_home)}
+        mode, lines = tg_delta.gate(LOGS, today_str.replace("-", ""), push)
+        if not (lines or alerts):
+            return
+        if len(lines) > TG_MAX_LINES:
+            dropped = len(lines) - TG_MAX_LINES
+            lines = lines[:TG_MAX_LINES] + [f"... and {dropped} more pushed games not shown"]
+        txt = "\n".join(lines) if lines else "no price changes since the last push"
+        if mode == "delta" and lines:
+            txt = "changes since the last push:\n" + txt
         if alerts:
             txt += "\n\u26a0 TRIPWIRE: " + ", ".join(alerts) + " below base rate, stop betting this board"
         requests.post(f"https://api.telegram.org/bot{tg}/sendMessage",

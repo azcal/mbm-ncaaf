@@ -13,6 +13,17 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import log_loss, brier_score_loss
 
 P4 = {"SEC", "Big Ten", "Big 12", "ACC", "Pac-12", "FBS Independents"}
+
+# start_date from CFBD/ESPN is UTC. dt.tz_localize(None) STRIPS the zone rather than
+# converting it, which rolls every 7-11pm kickoff into the next calendar day. That was
+# 22.9% of games 2018-2025, and it split real Saturdays into a Saturday bucket and a
+# phantom Sunday bucket for anything that groups by date. Convert, then drop the zone.
+TZ = "America/New_York"
+
+def game_day(series):
+    return pd.to_datetime(series, utc=True).dt.tz_convert(TZ).dt.tz_localize(None)
+
+
 def tier(conf, team):
     if team == "Notre Dame": return 2
     if conf in ("SEC", "Big Ten"): return 2
@@ -34,7 +45,7 @@ def load():
         s = s[(s.home_division == "fbs") | (s.away_division == "fbs")]
         rows.append(s)
     g = pd.concat(rows, ignore_index=True)
-    g["date"] = pd.to_datetime(g.start_date).dt.tz_localize(None)
+    g["date"] = game_day(g.start_date)
     g = g.sort_values(["date", "game_id"]).reset_index(drop=True)
     g["margin"] = g.home_points - g.away_points
     g["total"] = g.home_points + g.away_points

@@ -16,6 +16,7 @@ from sklearn.metrics import log_loss, brier_score_loss
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import tg_delta
+import board_format as BF
 import engine_ncaaf as E
 
 H = {"User-Agent": "Mozilla/5.0"}
@@ -199,14 +200,20 @@ def run(today_str):
     if tg and ch and (board is not None or alerts):
         # Gate sits AFTER the top-20 filter: only pushed games are eligible, and of those
         # only the ones whose price moved since the last run.
-        push = {}
+        push, skipped = {}, 0
         if board is not None:
-            for _, r in disp.iterrows():
-                line = (f"{r.away} @ {r.home}: {r.p_home:.3f} | CALIBRATION, no betting thru Wk3"
-                        if r.week < CAL_UNLOCK_WEEK else
-                        f"{r.away} @ {r.home}: {r.p_home:.3f} | "
-                        f"{r.home} >= {min_odds(r.p_home):.2f} / {r.away} >= {min_odds(1-r.p_home):.2f}")
-                push[r.game_id] = {"line": line, "min_odds": min_odds(r.p_home)}
+            rows = [(today_str, f"{r.away} @ {r.home}",
+                     r.home if r.p_home >= .5 else r.away,
+                     max(r.p_home, 1 - r.p_home), r.game_id, r.week) for _, r in disp.iterrows()]
+            wg = max([len(x[1]) for x in rows] + [10]); wp = max([len(x[2]) for x in rows] + [8])
+            for d_, gm, pk, q, gid, wk in rows:
+                cal = wk < CAL_UNLOCK_WEEK
+                if not cal and BF.min_odds(q) < BF.PRICE_FLOOR:
+                    skipped += 1
+                    continue
+                ln = (f"{d_}  {gm:<{wg}} {pk:<{wp}} CALIBRATION, no betting thru Wk3" if cal
+                      else BF.line(d_, gm, pk, q, w_game=wg, w_pick=wp))
+                push[gid] = {"line": ln, "min_odds": BF.min_odds(q)}
         mode, lines = tg_delta.gate(LOGS, today_str.replace("-", ""), push)
         if not (lines or alerts):
             return
@@ -214,6 +221,9 @@ def run(today_str):
             dropped = len(lines) - TG_MAX_LINES
             lines = lines[:TG_MAX_LINES] + [f"... and {dropped} more pushed games not shown"]
         txt = "\n".join(lines) if lines else "no price changes since the last push"
+        if skipped:
+            txt += f"\n({skipped} game{'s' if skipped != 1 else ''} skipped, "\
+                   f"price floor {BF.PRICE_FLOOR:.2f} / {BF.american(BF.PRICE_FLOOR)})"
         if mode == "delta" and lines:
             txt = "changes since the last push:\n" + txt
         if alerts:

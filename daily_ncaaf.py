@@ -213,6 +213,10 @@ def run(today_str):
                     continue
                 ln = (f"{d_}  {gm:<{wg}} {pk:<{wp}} CALIBRATION, no betting thru Wk3" if cal
                       else BF.line(d_, gm, pk, q, w_game=wg, w_pick=wp))
+                if not cal:
+                    note = BF.live_note("NCAAF", q)
+                    if note:
+                        ln = "\n".join([ln] + note)
                 push[gid] = {"line": ln, "min_odds": BF.min_odds(q)}
         mode, lines = tg_delta.gate(LOGS, today_str.replace("-", ""), push)
         if not (lines or alerts):

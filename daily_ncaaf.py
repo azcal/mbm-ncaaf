@@ -139,13 +139,6 @@ def run(today_str):
         keep = ["date", "game_id", "week", "season", "home", "away", "p_home", "p_elo",
                 "selected", "model"]
         log = pd.concat([log[~log.game_id.isin(board.game_id)], board[keep]], ignore_index=True)
-        print(f"\n=== MBM NCAAF board: {len(disp)} of {len(board)} FBS games "
-              f"(top {PUSH_PER_DAY}/day by model-vs-Elo divergence; full slate logged & graded) ===")
-        for _, r in disp.iterrows():
-            side = f"{r.home} {-r.margin_m:+.1f}" if r.margin_m > 0 else f"{r.away} {r.margin_m:+.1f}"
-            vals = (f"value: {r.home} >= {min_odds(r.p_home):.2f} / {r.away} >= {min_odds(1-r.p_home):.2f}"
-                    if r.week_v >= CAL_UNLOCK_WEEK else "CALIBRATION thru Wk3: predictions only, no betting")
-            print(f"{r.date} {r.away} @ {r.home}  p(home)={r.p_home:.3f}  model: {side}, total {r.total_m:.1f}  | {vals}")
     else:
         print("no FBS games in the next 8 days")
 
@@ -218,6 +211,13 @@ def run(today_str):
                     if note:
                         ln = "\n".join([ln] + note)
                 push[gid] = {"line": ln, "min_odds": BF.min_odds(q)}
+        print("\n=== MBM NCAAF board ===")
+        for _v in push.values():
+            print(_v["line"])
+        if skipped:
+            print(f"({skipped} game{{'s' if skipped != 1 else ''}} skipped, "
+                  f"price floor {{BF.PRICE_FLOOR:.2f}} / {{BF.american(BF.PRICE_FLOOR)}})")
+
         mode, lines = tg_delta.gate(LOGS, today_str.replace("-", ""), push)
         if not (lines or alerts):
             return

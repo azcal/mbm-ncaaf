@@ -2,9 +2,10 @@
 MBM NCAAF daily runner (rebuild v1, frozen spec).
 - Historical base: cfbfastR schedule parquets (2016-2025, committed)
 - 2026 season: ESPN scoreboard feed, team names mapped to CFBD via committed alias
-- Boards FBS-vs-FBS games (8-day horizon): p(home), model margin, model total
+- Boards FBS-vs-FBS games (7-day horizon): p(home), model margin, model total
 - CALIBRATION GATE: value lines suppressed before Week 4
-- Grades logged predictions, rolling metrics + last-200 tripwire, Telegram alerts
+- Grades logged predictions, rolling metrics + last-200 tripwire, Discord alerts
+- Top-N divergence filter retired 2026-08-03 against its own holdout; see PUSH_FILTER
 Usage: python daily_ncaaf.py [--date YYYY-MM-DD]
 """
 import argparse, json, math, os, sys, time, datetime as dt
@@ -20,6 +21,19 @@ import board_format as BF
 import notify
 import engine_ncaaf as E
 
+# Shared files must be at least this new. A minimum rather than an exact match, so a later
+# improvement to a shared file does not force an edit here.
+#   2026-08-03  board_format.line() field separator. The longest FBS matchup string is
+#               "Jacksonville State @ Florida International" at 42 characters, so without
+#               it the widest row on every board renders as an unstyled run-on line.
+SHARED_MIN = "2026-08-03"
+for _mod in (BF, notify, tg_delta):
+    _have = getattr(_mod, "VERSION", "")
+    if _have < SHARED_MIN:
+        raise ImportError(
+            f"{_mod.__name__}.py is version {_have or 'unstamped'}, this runner needs "
+            f"{SHARED_MIN} or newer. Copy the current shared files into this repo.")
+
 H = {"User-Agent": "Mozilla/5.0"}
 ESPN = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard"
 LOGS = os.path.join(HERE, "logs")
@@ -29,10 +43,36 @@ ALIAS = json.load(open(os.path.join(HERE, "data", "espn_alias.json")))
 CONF = json.load(open(os.path.join(HERE, "data", "conf_latest.json")))
 TRAIN_LO, TRAIN_HI = 2018, 2025
 CUR_SEASON = 2026
-CAL_UNLOCK_WEEK = 4
+CAL_UNLOCK_WEEK = SPEC.get("cal_unlock_week", 4)
 MIN_EDGE = 0.05
-PUSH_PER_DAY = 20        # top-N per slate day by |p_model - p_elo|
-TG_MAX_LINES = 60        # Telegram message cap; truncation is now reported, not silent
+
+# Eight days catches two Saturdays. Measured on 2023-25, the busiest eight-day window
+# holds 121 FBS-vs-FBS games against 72 for seven days, so seven guarantees exactly one
+# Saturday and halves the board without losing a slate.
+HORIZON_DAYS = SPEC.get("horizon_days", 7)
+
+# The top-N-per-day divergence filter, now OFF by default and kept only as a switch.
+#
+# Measured on the 2024 and 2025 frozen holdouts, restricted to the 28 dates where the
+# filter actually binds: pushed games read log loss 0.5587 and 69.1% hit, dropped games
+# 0.5046 and 73.5%. The difference in per-game log loss is +0.054 against the pushed side,
+# t=+2.00, p=0.045. The model is LESS accurate on the games the rule selects.
+#
+# The rule's stated claim still holds, that pushed games beat the Elo floor by more,
+# +0.0251 against +0.0088. But that gap is there because Elo is even worse on divergent
+# games, not because the model is better on them, and what decides whether a price beats a
+# book is how trustworthy the number is. Same rule was tested and dropped on the props
+# board for the same reason.
+#
+# `selected` is still computed and logged either way, so the rule stays under measurement
+# by the second tripwire below without deciding what gets pushed. Set push_filter true in
+# spec.json to put it back in charge.
+PUSH_FILTER = SPEC.get("push_filter", False)
+PUSH_PER_DAY = SPEC.get("push_per_day", 20)
+
+# Runaway guard only. A seven-day board tops out near 72 games, so this does not bind in
+# normal operation; it exists so a feed glitch cannot fire fifty Discord embeds.
+MAX_BLOCKS = SPEC.get("max_blocks", 90)
 
 def min_odds(p):
     p = min(max(float(p), 0.01), 0.99)
@@ -90,7 +130,7 @@ def run(today_str):
     hist = load_hist()
     cur = fetch_2026()
     done26 = cur[cur.completed] if len(cur) else cur
-    up = cur[(~cur.completed) & (cur.date >= today) & (cur.date <= today + pd.Timedelta(days=8))
+    up = cur[(~cur.completed) & (cur.date >= today) & (cur.date <= today + pd.Timedelta(days=HORIZON_DAYS))
              & (cur.home_division == "fbs") & (cur.away_division == "fbs")] if len(cur) else pd.DataFrame()
     g = pd.concat([hist, done26, up], ignore_index=True)
     g["margin"] = g.home_points - g.away_points
@@ -133,14 +173,15 @@ def run(today_str):
                              div=(board.p_home - board.p_elo).abs())
         disp = board.sort_values("div", ascending=False).groupby("date").head(PUSH_PER_DAY) \
                     .sort_values(["date", "div"], ascending=[True, False])
-        # Persist which rows were pushed. Full-slate grading watches the probabilities;
-        # it is structurally blind to the selection rule, so the filter needs its own record.
+        # Persist what the divergence rule WOULD pick. Full-slate grading watches the
+        # probabilities and is structurally blind to a selection rule, so the rule
+        # needs its own record whether or not it is currently in charge.
         board["selected"] = board.game_id.isin(disp.game_id).astype(int)
         keep = ["date", "game_id", "week", "season", "home", "away", "p_home", "p_elo",
                 "selected", "model"]
         log = pd.concat([log[~log.game_id.isin(board.game_id)], board[keep]], ignore_index=True)
     else:
-        print("no FBS games in the next 8 days")
+        print(f"no FBS games in the next {HORIZON_DAYS} days")
 
     res_map = g[g.margin.notna()].assign(gid=g.loc[g.margin.notna(), "game_id"].astype(str)) \
         .set_index("gid")["margin"]
@@ -165,8 +206,10 @@ def run(today_str):
                 alerts.append("NCAAF winner")
 
         # ---- second tripwire: the SELECTION RULE, not the model ----
-        # The rule's claim is that pushed games are where the feature layer beats the
-        # Elo floor by the most. Full-slate grading cannot see that claim at all.
+        # The rule no longer decides what gets pushed (see PUSH_FILTER), but it is
+        # still marked on every row so it keeps being graded on live data. Retired
+        # against a holdout, kept under measurement, same as MLB F5 and the CS2
+        # series-length head.
         sel = dec[dec.selected == 1]
         uns = dec[dec.selected == 0]
         if len(sel) >= 50 and len(uns) >= 50:
@@ -190,52 +233,66 @@ def run(today_str):
                     alerts.append("NCAAF selection rule")
         dec.to_csv(os.path.join(LOGS, "graded.csv"), index=False)
 
-    if True:
-        # Gate sits AFTER the top-20 filter: only pushed games are eligible, and of those
-        # only the ones whose price moved since the last run.
-        push, skipped = {}, 0
-        if board is not None:
-            rows = [(today_str, f"{r.away} @ {r.home}",
-                     r.home if r.p_home >= .5 else r.away,
-                     max(r.p_home, 1 - r.p_home), r.game_id, r.week) for _, r in disp.iterrows()]
-            wg = max([len(x[1]) for x in rows] + [10]); wp = max([len(x[2]) for x in rows] + [8])
-            for d_, gm, pk, q, gid, wk in rows:
-                cal = wk < CAL_UNLOCK_WEEK
-                if not cal and BF.min_odds(q) < BF.PRICE_FLOOR:
-                    skipped += 1
-                    continue
-                ln = (f"{d_}  {gm:<{wg}} {pk:<{wp}} CALIBRATION, no betting thru Wk3" if cal
-                      else BF.line(d_, gm, pk, q, w_game=wg, w_pick=wp))
-                if not cal:
-                    note = BF.live_note("NCAAF", q)
-                    if note:
-                        ln = "\n".join([ln] + note)
-                push[gid] = {"line": ln, "min_odds": BF.min_odds(q)}
-        print("\n=== MBM NCAAF board ===")
-        for _v in push.values():
-            print(_v["line"])
-        if skipped:
-            print(f"({skipped} game{{'s' if skipped != 1 else ''}} skipped, "
-                  f"price floor {{BF.PRICE_FLOOR:.2f}} / {{BF.american(BF.PRICE_FLOOR)}})")
+    push, skipped, cal_n = {}, 0, 0
+    if board is not None:
+        source = disp if PUSH_FILTER else board.sort_values(["date", "div"],
+                                                            ascending=[True, False])
+        rows = [(today_str, f"{r.away} @ {r.home}",
+                 r.home if r.p_home >= .5 else r.away,
+                 max(r.p_home, 1 - r.p_home), r.game_id, r.week) for _, r in source.iterrows()]
+        wg = max([len(x[1]) for x in rows] + [10]); wp = max([len(x[2]) for x in rows] + [8])
+        for d_, gm, pk, q, gid, wk in rows:
+            cal = wk < CAL_UNLOCK_WEEK
+            if not cal and BF.min_odds(q) < BF.PRICE_FLOOR:
+                skipped += 1
+                continue
+            if cal:
+                # Built to match notify's HEADER rule rather than BOARD, because there is
+                # no price on this row and there must not appear to be one. The previous
+                # version padded it into BF.line's column layout without the "find X or
+                # better" tail, which no regex matched, so it rendered as a run-on line.
+                ln = (f"{d_}  {gm}  ·  calibration week {int(wk)}, forecast {q:.1%}, "
+                      f"no betting until Week {CAL_UNLOCK_WEEK}")
+                cal_n += 1
+            else:
+                ln = BF.line(d_, gm, pk, q, w_game=wg, w_pick=wp)
+                note = BF.live_note("NCAAF", q)
+                if note:
+                    ln = "\n".join([ln] + note)
+            push[gid] = {"line": ln, "min_odds": BF.min_odds(q),
+                         # Carries the pick, so a side flipping between the morning and
+                         # afternoon runs is reported even when the price barely moves.
+                         "match": pk, "cal": bool(cal)}
+    print("\n=== MBM NCAAF board ===")
+    for _v in push.values():
+        print(_v["line"])
+    if skipped:
+        print(f"({skipped} game{'s' if skipped != 1 else ''} skipped, "
+              f"price floor {BF.PRICE_FLOOR:.2f} / {BF.american(BF.PRICE_FLOOR)})")
 
-        mode, lines = tg_delta.gate(LOGS, today_str.replace("-", ""), push)
-        if not (lines or alerts):
-            return
-        if len(lines) > TG_MAX_LINES:
-            dropped = len(lines) - TG_MAX_LINES
-            lines = lines[:TG_MAX_LINES] + [f"... and {dropped} more pushed games not shown"]
+    mode, lines = tg_delta.gate(LOGS, today_str.replace("-", ""), push)
+    if lines or alerts:
+        if len(lines) > MAX_BLOCKS:
+            dropped = len(lines) - MAX_BLOCKS
+            lines = lines[:MAX_BLOCKS] + [f"... and {dropped} more games not shown"]
         body = list(lines) if lines else ["no price changes since the last push"]
         foot = (f"{skipped} game{'s' if skipped != 1 else ''} skipped, "
                 f"price floor {BF.PRICE_FLOOR:.2f} / {BF.american(BF.PRICE_FLOOR)}")\
                if skipped else None
         title = "MBM NCAAF" + (" · changes since the last push"
-                                 if mode == "delta" and lines else "")
-        colour = notify.GREEN
+                               if mode == "delta" and lines else "")
+        # GREY is the calibration colour. Only when every row on the board is inside the
+        # window, so a mixed week reads as a live board with some rows marked.
+        colour = notify.GREY if push and cal_n == len(push) else notify.GREEN
         if alerts:
             body = body + ["", "TRIPWIRE: " + ", ".join(alerts)
                            + " below base rate, stop betting this board"]
             colour = notify.RED
         notify.send(title, body, foot, colour)
+    elif not push:
+        print("no board to send")
+    else:
+        print("board unchanged since the last push, nothing sent")
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()

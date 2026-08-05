@@ -44,7 +44,10 @@ CONF = json.load(open(os.path.join(HERE, "data", "conf_latest.json")))
 TRAIN_LO, TRAIN_HI = 2018, 2025
 CUR_SEASON = 2026
 CAL_UNLOCK_WEEK = SPEC.get("cal_unlock_week", 4)
-MIN_EDGE = 0.05
+# Tracks board_format rather than restating it. This is the console-side copy, and a
+# local 0.05 here while board_format ran at 0.00 meant the Actions log and Discord
+# quoted different prices for the same game.
+MIN_EDGE = BF.MIN_EDGE
 
 # Eight days catches two Saturdays. Measured on 2023-25, the busiest eight-day window
 # holds 121 FBS-vs-FBS games against 72 for seven days, so seven guarantees exactly one

@@ -117,6 +117,7 @@ def fetch_2026():
                 hl, al = t["home"]["team"]["location"], t["away"]["team"]["location"]
                 hn, an = ALIAS.get(hl, hl), ALIAS.get(al, al)
                 done = bool(e["status"]["type"].get("completed"))
+                state = e["status"]["type"].get("state")
                 rows.append(dict(game_id=str(e["id"]), season=CUR_SEASON, week=wk,
                     season_type="regular" if st == 2 else "postseason",
                     start_date=e.get("date"), neutral_site=bool(c.get("neutralSite")),
@@ -127,7 +128,7 @@ def fetch_2026():
                     home_conference=CONF.get(hn), away_conference=CONF.get(an),
                     home_points=float(t["home"].get("score")) if done else np.nan,
                     away_points=float(t["away"].get("score")) if done else np.nan,
-                    completed=done))
+                    completed=done, state=state))
             time.sleep(0.15)
     d = pd.DataFrame(rows).drop_duplicates("game_id")
     if len(d):
@@ -139,7 +140,10 @@ def run(today_str):
     hist = load_hist()
     cur = fetch_2026()
     done26 = cur[cur.completed] if len(cur) else cur
-    up = cur[(~cur.completed) & (cur.date >= today) & (cur.date <= today + pd.Timedelta(days=HORIZON_DAYS))
+    # `~completed` is not enough: a game being played right now is completed=False and
+    # would be boarded at a pre-game price. state is "pre", "in" or "post".
+    _pre = cur.state.eq("pre") if "state" in cur.columns else ~cur.completed
+    up = cur[_pre & (cur.date >= today) & (cur.date <= today + pd.Timedelta(days=HORIZON_DAYS))
              & (cur.home_division == "fbs") & (cur.away_division == "fbs")] if len(cur) else pd.DataFrame()
     g = pd.concat([hist, done26, up], ignore_index=True)
     g["margin"] = g.home_points - g.away_points

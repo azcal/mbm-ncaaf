@@ -18,6 +18,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import tg_delta
 import board_format as BF
+import freshness as FR
 import notify
 import engine_ncaaf as E
 
@@ -27,14 +28,19 @@ import engine_ncaaf as E
 #               "Jacksonville State @ Florida International" at 42 characters, so without
 #               it the widest row on every board renders as an unstyled run-on line.
 SHARED_MIN = "2026-08-03"
-for _mod in (BF, notify, tg_delta):
+for _mod in (BF, notify, tg_delta, FR):
     _have = getattr(_mod, "VERSION", "")
     if _have < SHARED_MIN:
         raise ImportError(
             f"{_mod.__name__}.py is version {_have or 'unstamped'}, this runner needs "
             f"{SHARED_MIN} or newer. Copy the current shared files into this repo.")
 
-H = {"User-Agent": "Mozilla/5.0"}
+# ESPN 403s ANY custom User-Agent and only serves the requests default. Measured
+# 2026-08-05 on the WNBA scoreboard: no header 200, "Mozilla/5.0" 403, an honest
+# identifier with contact details 403, a full browser header set 403. mbm-wnba has
+# always worked because it never set one. Do not "fix" this by adding a UA.
+ESPN_H = {}
+H = ESPN_H
 ESPN = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard"
 LOGS = os.path.join(HERE, "logs")
 SPEC = json.load(open(os.path.join(HERE, "spec.json")))

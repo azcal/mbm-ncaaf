@@ -60,6 +60,27 @@ MIN_EDGE = BF.MIN_EDGE
 # Saturday and halves the board without losing a slate.
 HORIZON_DAYS = SPEC.get("horizon_days", 7)
 
+# --- Week 1 early window --------------------------------------------------------------
+# A date, not a wider horizon. A horizon big enough to reach the opening Saturday would
+# still be that big in November, where an eight-day window already holds 121 games.
+# This reaches one fixed date and then stops mattering: past it the board is back on
+# HORIZON_DAYS with no edit and nothing to remember to undo.
+#
+# 2026 opens 29 August with 8 games, then the real Week 1 lands 3-7 September with 91 more.
+# A seven-day horizon on 23 August reaches 30 August and catches 8 of 99.
+#
+# Empty or absent disables it.
+EARLY_UNTIL = SPEC.get("early_until")
+
+
+def board_until(today):
+    """Last game date to board. HORIZON_DAYS normally, reaching to EARLY_UNTIL while the
+    window is open. max() rather than a swap, so the window can only widen the board."""
+    hi = today + pd.Timedelta(days=HORIZON_DAYS)
+    if EARLY_UNTIL and today <= pd.Timestamp(EARLY_UNTIL):
+        hi = max(hi, pd.Timestamp(EARLY_UNTIL))
+    return hi
+
 # The top-N-per-day divergence filter, now OFF by default and kept only as a switch.
 #
 # Measured on the 2024 and 2025 frozen holdouts, restricted to the 28 dates where the
@@ -82,6 +103,89 @@ PUSH_PER_DAY = SPEC.get("push_per_day", 20)
 # Runaway guard only. A seven-day board tops out near 72 games, so this does not bind in
 # normal operation; it exists so a feed glitch cannot fire fifty Discord embeds.
 MAX_BLOCKS = SPEC.get("max_blocks", 90)
+
+
+DATA_DICT = """# picks.csv
+
+One row per published pick from the MustBeMoose NCAAF model. Rebuilt on every run.
+
+This is a **forecast**, not a bet recommendation. No price is compared anywhere in this
+file, so whether a probability beats the odds at your book is entirely your call.
+
+## Reading a pick
+
+This board picks a WINNER, not a spread. `pick` is the team; `pick_claim` is always
+`wins outright`; `pick_prob` is that team's chance of winning the game.
+
+| column | meaning |
+|---|---|
+| `pick_team` | the team being picked |
+| `pick_side` | whether that team is `home` or `away` |
+| `pick_claim` | always `wins outright` on this board |
+| `pick_prob` | P(`pick_team` wins), 0 to 1 |
+| `model_spread` | the model's own line on the **home** team, negative meaning home favoured. Not a market number and not what the pick is priced against; this board quotes moneylines. |
+| `model_total` | the model's projected combined score |
+| `home_win_prob` | P(home team wins), the same number as `pick_prob` when `pick_side` is home |
+| `pick_result` | `win`, `loss`, `push`, or empty until played |
+| `cal` | true inside the calibration window, before Week 4 |
+
+## Grading
+
+`wins outright` rows score on the game result: the pick wins when `pick_team` wins.
+`final_margin` is home score minus away score, so flip its sign for an away pick.
+
+## What the probability means
+
+`pick_prob` is calibrated, not a confidence score. A set of rows reading 0.70 should win
+about 70% of the time.
+"""
+
+PICKS_COLS = ["date", "game_id", "season", "week", "away", "home",
+              "pick", "pick_team", "pick_side", "pick_claim", "pick_prob",
+              "model_spread", "model_total", "home_win_prob",
+              "cal", "final_margin", "pick_result"]
+
+
+def write_picks(log):
+    """The publishable file: one row per published pick, nothing else.
+
+    Separate from predictions.csv on purpose. That file feeds graded.csv and the dashboard
+    repo and must keep its shape; this one is built for a reader who has never seen the
+    project. Only rows with a pick, only columns that mean something to an outsider.
+
+    Rebuilt in full from the log every run rather than appended to, because the log already
+    knows which rows exist and which have settled. Sorted, and probabilities rounded, so an
+    unchanged pick produces a byte-identical line and the git history stays readable.
+    """
+    if "pick_team" not in log.columns:
+        return
+    p = log[log.pick_team.notna() & (log.pick_team.astype(str) != "")].copy()
+    if not len(p):
+        print("picks.csv: no published picks in the log yet")
+        return
+    p = p.drop_duplicates("game_id", keep="last")
+    # NCAAF logs the margin as `result`; the published file calls it final_margin so a
+    # reader does not have to guess whether "result" means the score or the pick's outcome.
+    p["final_margin"] = pd.to_numeric(p.get("result"), errors="coerce")
+    p["home_win_prob"] = pd.to_numeric(p.get("p_home"), errors="coerce")
+    p["pick_claim"] = "wins outright"
+    p["pick"] = p.pick_team.astype(str)
+    mp = np.where(p.pick_side.values == "home", p.final_margin.values, -p.final_margin.values)
+    p["pick_result"] = np.where(~np.isfinite(mp), "",
+                                np.where(mp > 0, "win", np.where(mp < 0, "loss", "push")))
+    for c in ("pick_prob", "home_win_prob"):
+        p[c] = pd.to_numeric(p[c], errors="coerce").round(4)
+    for c in ("model_spread", "model_total"):
+        p[c] = pd.to_numeric(p.get(c), errors="coerce").round(2)
+    for c in PICKS_COLS:
+        if c not in p.columns:
+            p[c] = ""
+    p = p[PICKS_COLS].sort_values(["date", "game_id"]).reset_index(drop=True)
+    p.to_csv(os.path.join(LOGS, "picks.csv"), index=False)
+    open(os.path.join(LOGS, "picks_README.md"), "w").write(DATA_DICT)
+    g = int((p.pick_result.astype(str) != "").sum())
+    print(f"picks.csv: {len(p)} pick(s), {g} graded, {len(p) - g} pending")
+
 
 def min_odds(p):
     p = min(max(float(p), 0.01), 0.99)
@@ -143,8 +247,12 @@ def run(today_str):
     # `~completed` is not enough: a game being played right now is completed=False and
     # would be boarded at a pre-game price. state is "pre", "in" or "post".
     _pre = cur.state.eq("pre") if "state" in cur.columns else ~cur.completed
-    up = cur[_pre & (cur.date >= today) & (cur.date <= today + pd.Timedelta(days=HORIZON_DAYS))
+    _hi = board_until(today)
+    up = cur[_pre & (cur.date >= today) & (cur.date <= _hi)
              & (cur.home_division == "fbs") & (cur.away_division == "fbs")] if len(cur) else pd.DataFrame()
+    if EARLY_UNTIL and today <= pd.Timestamp(EARLY_UNTIL):
+        print(f"early window open: boarding through {pd.Timestamp(EARLY_UNTIL):%Y-%m-%d} "
+              f"({len(up)} FBS game(s)); reverts to a {HORIZON_DAYS}-day horizon by itself")
     g = pd.concat([hist, done26, up], ignore_index=True)
     g["margin"] = g.home_points - g.away_points
     g["total"] = g.home_points + g.away_points
@@ -190,16 +298,29 @@ def run(today_str):
         # probabilities and is structurally blind to a selection rule, so the rule
         # needs its own record whether or not it is currently in charge.
         board["selected"] = board.game_id.isin(disp.game_id).astype(int)
+        # margin_m and total_m were computed on every run and then dropped by this list.
+        # They are the model's own spread and total, the two things a downstream reader
+        # most wants and the two the Collective's board renders, so they are kept now.
+        # model_spread is the margin as a HANDICAP on the home team: a home side favoured
+        # by 7 is model_spread -7, so the sign flips.
+        board["model_spread"] = -board.margin_m
+        board["model_total"] = board.total_m
+        board["cal"] = board.week < CAL_UNLOCK_WEEK
+        board["pick_side"] = np.where(board.p_home >= .5, "home", "away")
+        board["pick_team"] = np.where(board.p_home >= .5, board.home, board.away)
+        board["pick_prob"] = np.maximum(board.p_home, 1 - board.p_home)
         keep = ["date", "game_id", "week", "season", "home", "away", "p_home", "p_elo",
-                "selected", "model"]
+                "selected", "model", "model_spread", "model_total", "cal",
+                "pick_side", "pick_team", "pick_prob"]
         log = pd.concat([log[~log.game_id.isin(board.game_id)], board[keep]], ignore_index=True)
     else:
-        print(f"no FBS games in the next {HORIZON_DAYS} days")
+        print(f"no FBS games on or before {_hi:%Y-%m-%d}")
 
     res_map = g[g.margin.notna()].assign(gid=g.loc[g.margin.notna(), "game_id"].astype(str)) \
         .set_index("gid")["margin"]
     log["result"] = log.game_id.map(res_map)
     log.to_csv(pred_path, index=False)
+    write_picks(log)
     dec = log[log.result.notna() & (log.result != 0)]
     if len(dec) >= 30:
         y = (dec.result > 0).astype(int).values

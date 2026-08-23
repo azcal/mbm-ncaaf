@@ -16,7 +16,8 @@ This board picks a WINNER, not a spread. `pick` is the team; `pick_claim` is alw
 | `pick_side` | whether that team is `home` or `away` |
 | `pick_claim` | always `wins outright` on this board |
 | `pick_prob` | P(`pick_team` wins), 0 to 1 |
-| `model_spread` | the model's own line on the **home** team, negative meaning home favoured. Not a market number and not what the pick is priced against; this board quotes moneylines. |
+| `model_spread` | the model's own line on the **home** team, negative meaning home favoured, rounded to a quotable half point. Not a market number; this board quotes moneylines. |
+| `model_pick_line` | the same number written the way a book writes it: `-6`, `-12.5`, `PK` |
 | `model_total` | the model's projected combined score |
 | `home_win_prob` | P(home team wins), the same number as `pick_prob` when `pick_side` is home |
 | `pick_result` | `win`, `loss`, `push`, or empty until played |

@@ -123,7 +123,8 @@ This board picks a WINNER, not a spread. `pick` is the team; `pick_claim` is alw
 | `pick_side` | whether that team is `home` or `away` |
 | `pick_claim` | always `wins outright` on this board |
 | `pick_prob` | P(`pick_team` wins), 0 to 1 |
-| `model_spread` | the model's own line on the **home** team, negative meaning home favoured. Not a market number and not what the pick is priced against; this board quotes moneylines. |
+| `model_spread` | the model's own line on the **home** team, negative meaning home favoured, rounded to a quotable half point. Not a market number; this board quotes moneylines. |
+| `model_pick_line` | the same number written the way a book writes it: `-6`, `-12.5`, `PK` |
 | `model_total` | the model's projected combined score |
 | `home_win_prob` | P(home team wins), the same number as `pick_prob` when `pick_side` is home |
 | `pick_result` | `win`, `loss`, `push`, or empty until played |
@@ -142,7 +143,7 @@ about 70% of the time.
 
 PICKS_COLS = ["date", "game_id", "season", "week", "away", "home",
               "pick", "pick_team", "pick_side", "pick_claim", "pick_prob",
-              "model_spread", "model_total", "home_win_prob",
+              "model_spread", "model_pick_line", "model_total", "home_win_prob",
               "cal", "final_margin", "pick_result"]
 
 
@@ -175,8 +176,19 @@ def write_picks(log):
                                 np.where(mp > 0, "win", np.where(mp < 0, "loss", "push")))
     for c in ("pick_prob", "home_win_prob"):
         p[c] = pd.to_numeric(p[c], errors="coerce").round(4)
-    for c in ("model_spread", "model_total"):
-        p[c] = pd.to_numeric(p.get(c), errors="coerce").round(2)
+    # Half points, because that is how a spread is quoted. The Ridge returns -6.07 and
+    # -1.95, which are not lines anybody posts and imply a precision the model does not
+    # have. predictions.csv keeps the raw number for analysis; the published file rounds.
+    #
+    # Rounding decides which side of a key number the quote lands on, and in college the
+    # keys are flatter than the NFL's: measured on 17,423 games 2021-25, margin 3 is 8.1%,
+    # 7 is 7.2%, 14 is 4.1%, 10 and 21 both 3.8%. So -3.4 quoting as -3.5 and -2.6 as -2.5
+    # is a real difference, and nearest-half-point is the honest way to resolve it rather
+    # than nudging toward a key the model did not ask for.
+    p["model_spread"] = (pd.to_numeric(p.get("model_spread"), errors="coerce") * 2
+                         ).round() / 2 + 0.0
+    p["model_total"] = (pd.to_numeric(p.get("model_total"), errors="coerce") * 2).round() / 2
+    p["model_pick_line"] = [BF.handicap(v) if v == v else "" for v in p.model_spread]
     for c in PICKS_COLS:
         if c not in p.columns:
             p[c] = ""
@@ -371,22 +383,29 @@ def run(today_str):
     if board is not None:
         source = disp if PUSH_FILTER else board.sort_values(["date", "div"],
                                                             ascending=[True, False])
-        rows = [(today_str, f"{r.away} @ {r.home}",
+        # r.date, not today_str. Every row used to print the run date, so a 15-day early
+        # window rendered forty-eight games all dated today and a reader could not tell an
+        # opening Saturday fixture from one nine days out.
+        rows = [(str(r.date)[:10], f"{r.away} @ {r.home}",
                  r.home if r.p_home >= .5 else r.away,
-                 max(r.p_home, 1 - r.p_home), r.game_id, r.week) for _, r in source.iterrows()]
+                 max(r.p_home, 1 - r.p_home), r.game_id, r.week,
+                 BF.handicap(round(float(-r.margin_m) * 2) / 2 + 0.0))
+                for _, r in source.iterrows()]
         wg = max([len(x[1]) for x in rows] + [10]); wp = max([len(x[2]) for x in rows] + [8])
-        for d_, gm, pk, q, gid, wk in rows:
+        for d_, gm, pk, q, gid, wk, spr in rows:
             cal = wk < CAL_UNLOCK_WEEK
             if not cal and BF.min_odds(q) < BF.PRICE_FLOOR:
                 skipped += 1
                 continue
             if cal:
-                # Built to match notify's HEADER rule rather than BOARD, because there is
-                # no price on this row and there must not appear to be one. The previous
-                # version padded it into BF.line's column layout without the "find X or
-                # better" tail, which no regex matched, so it rendered as a run-on line.
-                ln = (f"{d_}  {gm}  ·  calibration week {int(wk)}, forecast {q:.1%}, "
-                      f"no betting until Week {CAL_UNLOCK_WEEK}")
+                # notify.FORECAST, which names the team and carries no price. The previous
+                # version matched HEADER and read "forecast 62.2%" with no indication of
+                # WHICH side that 62.2% belonged to, which is the one thing a forecast row
+                # has to say. The model's own line rides along, so the row states a number
+                # as well as a lean.
+                ln = (f"{d_}  {gm:<{wg}}  {pk} {spr:<{max(wp, 8)}}  win {q:.1%}\n"
+                      f"      note: week {int(wk)} calibration, no betting until "
+                      f"Week {CAL_UNLOCK_WEEK}")
                 cal_n += 1
             else:
                 ln = BF.line(d_, gm, pk, q, w_game=wg, w_pick=wp)

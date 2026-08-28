@@ -124,7 +124,7 @@ This board picks a WINNER, not a spread. `pick` is the team; `pick_claim` is alw
 | `pick_claim` | always `wins outright` on this board |
 | `pick_prob` | P(`pick_team` wins), 0 to 1 |
 | `model_spread` | the model's own line on the **home** team, negative meaning home favoured, rounded to a quotable half point. Not a market number; this board quotes moneylines. |
-| `model_pick_line` | the same number written the way a book writes it: `-6`, `-12.5`, `PK` |
+| `model_pick_line` | the model's line written the way a book writes it, on **`pick_team`**: `-6`, `-12.5`, `PK`. Opposite sign to `model_spread` whenever the pick is the away side, because that column is on the home team. |
 | `model_total` | the model's projected combined score |
 | `home_win_prob` | P(home team wins), the same number as `pick_prob` when `pick_side` is home |
 | `pick_result` | `win`, `loss`, `push`, or empty until played |
@@ -188,7 +188,12 @@ def write_picks(log):
     p["model_spread"] = (pd.to_numeric(p.get("model_spread"), errors="coerce") * 2
                          ).round() / 2 + 0.0
     p["model_total"] = (pd.to_numeric(p.get("model_total"), errors="coerce") * 2).round() / 2
-    p["model_pick_line"] = [BF.handicap(v) if v == v else "" for v in p.model_spread]
+    # On the PICKED team, which is what the column name promises. model_spread stays on
+    # the home team, as its own docstring says, so the two disagree in sign on away picks
+    # and that is correct rather than a mistake.
+    p["model_pick_line"] = [
+        BF.handicap(v if sd == "home" else -v) if v == v else ""
+        for v, sd in zip(p.model_spread, p.pick_side)]
     for c in PICKS_COLS:
         if c not in p.columns:
             p[c] = ""
@@ -386,12 +391,22 @@ def run(today_str):
         # r.date, not today_str. Every row used to print the run date, so a 15-day early
         # window rendered forty-eight games all dated today and a reader could not tell an
         # opening Saturday fixture from one nine days out.
-        rows = [(str(r.date)[:10], f"{r.away} @ {r.home}",
-                 r.home if r.p_home >= .5 else r.away,
-                 max(r.p_home, 1 - r.p_home), r.game_id, r.week,
-                 BF.handicap(round(float(-r.margin_m) * 2) / 2 + 0.0))
-                for _, r in source.iterrows()]
-        wg = max([len(x[1]) for x in rows] + [10]); wp = max([len(x[2]) for x in rows] + [8])
+        # The handicap sits on the HOME team: margin_m is home minus away, so -margin_m is
+        # the home side's line. Pairing that with the PICKED team inverts it whenever the
+        # away side is picked, which published "Miami +18" for a Miami team the model has
+        # winning by 18. Flip it when the pick is on the road.
+        rows = []
+        for _, r in source.iterrows():
+            home_pick = r.p_home >= .5
+            hand = (-float(r.margin_m)) if home_pick else float(r.margin_m)
+            rows.append((str(r.date)[:10], f"{r.away} @ {r.home}",
+                         r.home if home_pick else r.away,
+                         max(r.p_home, 1 - r.p_home), r.game_id, r.week,
+                         BF.handicap(round(hand * 2) / 2 + 0.0)))
+        wg = max([len(x[1]) for x in rows] + [10])
+        # Pad the whole "TEAM -6.5" token, not just the handicap. Padding the number alone
+        # left the win column ragged, because the team names differ by fifteen characters.
+        wp = max([len(f"{x[2]} {x[6]}") for x in rows] + [10])
         for d_, gm, pk, q, gid, wk, spr in rows:
             cal = wk < CAL_UNLOCK_WEEK
             if not cal and BF.min_odds(q) < BF.PRICE_FLOOR:
@@ -403,7 +418,7 @@ def run(today_str):
                 # WHICH side that 62.2% belonged to, which is the one thing a forecast row
                 # has to say. The model's own line rides along, so the row states a number
                 # as well as a lean.
-                ln = (f"{d_}  {gm:<{wg}}  {pk} {spr:<{max(wp, 8)}}  win {q:.1%}\n"
+                ln = (f"{d_}  {gm:<{wg}}  {(pk + ' ' + spr):<{wp}}  win {q:.1%}\n"
                       f"      note: week {int(wk)} calibration, no betting until "
                       f"Week {CAL_UNLOCK_WEEK}")
                 cal_n += 1

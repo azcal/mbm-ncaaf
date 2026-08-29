@@ -1,9 +1,9 @@
 date,game_id,season,week,away,home,pick,pick_team,pick_side,pick_claim,pick_prob,model_spread,model_pick_line,model_total,home_win_prob,cal,final_margin,pick_result
-2026-08-29,401856766,2026,1,North Carolina,TCU,TCU,TCU,home,wins outright,0.7816,-12.5,-12.5,50.5,0.7816,True,,
+2026-08-29,401856766,2026,1,North Carolina,TCU,TCU,TCU,home,wins outright,0.7816,-12.5,-12.5,50.5,0.7816,True,-5.0,loss
 2026-08-29,401858201,2026,1,Hawai'i,Stanford,Stanford,Stanford,home,wins outright,0.6219,-6.0,-6,52.5,0.6219,True,,
-2026-08-29,401858202,2026,1,NC State,Virginia,Virginia,Virginia,home,wins outright,0.5515,-2.0,-2,52.0,0.5515,True,,
+2026-08-29,401858202,2026,1,NC State,Virginia,Virginia,Virginia,home,wins outright,0.5515,-2.0,-2,52.0,0.5515,True,26.0,win
 2026-08-29,401862693,2026,1,Memphis,UNLV,UNLV,UNLV,home,wins outright,0.6242,-4.5,-4.5,60.0,0.6242,True,,
-2026-08-29,401864494,2026,1,San José State,USC,USC,USC,home,wins outright,0.9643,-32.0,-32,60.5,0.9643,True,,
+2026-08-29,401864494,2026,1,San José State,USC,USC,USC,home,wins outright,0.9643,-32.0,-32,60.5,0.9643,True,16.0,win
 2026-08-29,401864570,2026,1,New Mexico State,Florida State,Florida State,Florida State,home,wins outright,0.9234,-25.0,-25,52.5,0.9234,True,,
 2026-09-03,401856776,2026,1,Colorado,Georgia Tech,Georgia Tech,Georgia Tech,home,wins outright,0.8028,-13.0,-13,57.0,0.8028,True,,
 2026-09-03,401858204,2026,1,Akron,Wake Forest,Wake Forest,Wake Forest,home,wins outright,0.9181,-24.0,-24,53.5,0.9181,True,,
@@ -12,8 +12,8 @@ date,game_id,season,week,away,home,pick,pick_team,pick_side,pick_claim,pick_prob
 2026-09-04,401856664,2026,1,UTEP,Oklahoma,Oklahoma,Oklahoma,home,wins outright,0.9705,-34.0,-34,51.5,0.9705,True,,
 2026-09-04,401858206,2026,1,Miami,Stanford,Miami,Miami,away,wins outright,0.8753,18.0,-18,50.5,0.1247,True,,
 2026-09-04,401858429,2026,1,Toledo,Michigan State,Michigan State,Michigan State,home,wins outright,0.5621,-3.5,-3.5,51.5,0.5621,True,,
-2026-09-04,401858436,2026,1,Fresno State,USC,USC,USC,home,wins outright,0.8658,-18.5,-18.5,54.5,0.8658,True,,
-2026-09-04,401864495,2026,1,San José State,Eastern Michigan,Eastern Michigan,Eastern Michigan,home,wins outright,0.6832,-7.0,-7,57.0,0.6832,True,,
+2026-09-04,401858436,2026,1,Fresno State,USC,USC,USC,home,wins outright,0.8645,-18.0,-18,55.0,0.8645,True,,
+2026-09-04,401864495,2026,1,San José State,Eastern Michigan,Eastern Michigan,Eastern Michigan,home,wins outright,0.6709,-7.0,-7,57.5,0.6709,True,,
 2026-09-05,401856634,2026,1,East Carolina,Alabama,Alabama,Alabama,home,wins outright,0.852,-17.5,-17.5,52.5,0.852,True,,
 2026-09-05,401856636,2026,1,Baylor,Auburn,Auburn,Auburn,home,wins outright,0.6801,-8.5,-8.5,53.5,0.6801,True,,
 2026-09-05,401856637,2026,1,Florida Atlantic,Florida,Florida,Florida,home,wins outright,0.9151,-24.0,-24,56.0,0.9151,True,,

@@ -20,6 +20,7 @@ import tg_delta
 import board_format as BF
 import freshness as FR
 import notify
+import spread
 import engine_ncaaf as E
 
 # Shared files must be at least this new. A minimum rather than an exact match, so a later
@@ -59,6 +60,8 @@ MIN_EDGE = BF.MIN_EDGE
 # holds 121 FBS-vs-FBS games against 72 for seven days, so seven guarantees exactly one
 # Saturday and halves the board without losing a slate.
 HORIZON_DAYS = SPEC.get("horizon_days", 7)
+SPREAD_JMAX = int(SPEC.get("spread_jmax", 110))
+KEY_GRID = np.arange(-60.0, 61.0, 0.5)   # half AND whole numbers, so pushes can be priced
 
 # --- Week 1 early window --------------------------------------------------------------
 # A date, not a wider horizon. A horizon big enough to reach the opening Saturday would
@@ -169,11 +172,21 @@ def write_picks(log):
     # reader does not have to guess whether "result" means the score or the pick's outcome.
     p["final_margin"] = pd.to_numeric(p.get("result"), errors="coerce")
     p["home_win_prob"] = pd.to_numeric(p.get("p_home"), errors="coerce")
-    p["pick_claim"] = "wins outright"
-    p["pick"] = p.pick_team.astype(str)
+    p["pick_claim"] = p.get("pick_claim", "wins outright").fillna("wins outright")
+    p["pick"] = [f"{t} {BF.handicap(l)}" if pd.notna(l) else str(t)
+                 for t, l in zip(p.pick_team, p.get("pick_line", pd.Series(index=p.index)))]
     mp = np.where(p.pick_side.values == "home", p.final_margin.values, -p.final_margin.values)
-    p["pick_result"] = np.where(~np.isfinite(mp), "",
-                                np.where(mp > 0, "win", np.where(mp < 0, "loss", "push")))
+    # Two claims, graded differently. A covers row scores against pick_line; a wins
+    # outright row scores on the game. Grading a cover row on the moneyline would call a
+    # dog that lost by three a loss when the claim it made was a win.
+    pl = pd.to_numeric(p.get("pick_line"), errors="coerce").values
+    cov = mp + np.where(np.isfinite(pl), pl, 0.0)
+    is_cov = p.pick_claim.values == "covers"
+    base = np.where(is_cov, cov, mp)
+    ok = np.isfinite(mp) & (np.isfinite(pl) | ~is_cov)
+    p["pick_result"] = np.where(~ok, "",
+                                np.where(base > 0, "win",
+                                         np.where(base < 0, "loss", "push")))
     for c in ("pick_prob", "home_win_prob"):
         p[c] = pd.to_numeric(p[c], errors="coerce").round(4)
     # Half points, because that is how a spread is quoted. The Ridge returns -6.07 and
@@ -207,6 +220,153 @@ def write_picks(log):
 def min_odds(p):
     p = min(max(float(p), 0.01), 0.99)
     return math.ceil((1 + MIN_EDGE) / p * 100) / 100.0
+
+
+# --- market lines ---------------------------------------------------------------------
+# The Odds API v4, americanfootball_ncaaf. Key from ODDS_API_KEY, never logged.
+#
+# Coverage matters far more here than in the NFL. A Saturday carries G5 and FCS fixtures no
+# book prices at all, where an NFL slate has a line on all sixteen. Every game without one
+# falls back to the model's own line and a wins-outright claim, exactly as the NFL runner
+# does when a game is unpriced.
+ODDS_API = "https://api.the-odds-api.com/v4/sports/americanfootball_ncaaf/odds"
+ODDS_REGIONS = SPEC.get("odds_regions", "us")
+
+# Book name -> the name this runner uses internally, which is the ESPN location. Generated
+# from ESPN's own team list rather than hand-written: all 136 FBS schools resolve with zero
+# collisions, including the ones that defeat prefix matching such as Miami against
+# Miami (OH), and the accented San Jose State.
+ODDS_TEAM = {
+    "Air Force Falcons": "Air Force", "Akron Zips": "Akron", "Alabama Crimson Tide": "Alabama",
+    "App State Mountaineers": "App State", "Arizona Wildcats": "Arizona",
+    "Arizona State Sun Devils": "Arizona State", "Arkansas Razorbacks": "Arkansas",
+    "Arkansas State Red Wolves": "Arkansas State", "Army Black Knights": "Army",
+    "Auburn Tigers": "Auburn", "BYU Cougars": "BYU", "Ball State Cardinals": "Ball State",
+    "Baylor Bears": "Baylor", "Boise State Broncos": "Boise State",
+    "Boston College Eagles": "Boston College", "Bowling Green Falcons": "Bowling Green",
+    "Buffalo Bulls": "Buffalo", "California Golden Bears": "California",
+    "Central Michigan Chippewas": "Central Michigan", "Charlotte 49ers": "Charlotte",
+    "Cincinnati Bearcats": "Cincinnati", "Clemson Tigers": "Clemson",
+    "Coastal Carolina Chanticleers": "Coastal Carolina", "Colorado Buffaloes": "Colorado",
+    "Colorado State Rams": "Colorado State", "Delaware Blue Hens": "Delaware",
+    "Duke Blue Devils": "Duke", "East Carolina Pirates": "East Carolina",
+    "Eastern Michigan Eagles": "Eastern Michigan", "Florida Gators": "Florida",
+    "Florida Atlantic Owls": "Florida Atlantic",
+    "Florida International Panthers": "Florida International",
+    "Florida State Seminoles": "Florida State", "Fresno State Bulldogs": "Fresno State",
+    "Georgia Bulldogs": "Georgia", "Georgia Southern Eagles": "Georgia Southern",
+    "Georgia State Panthers": "Georgia State", "Georgia Tech Yellow Jackets": "Georgia Tech",
+    "Hawai'i Rainbow Warriors": "Hawai'i", "Houston Cougars": "Houston",
+    "Illinois Fighting Illini": "Illinois", "Indiana Hoosiers": "Indiana",
+    "Iowa Hawkeyes": "Iowa", "Iowa State Cyclones": "Iowa State",
+    "Jacksonville State Gamecocks": "Jacksonville State",
+    "James Madison Dukes": "James Madison", "Kansas Jayhawks": "Kansas",
+    "Kansas State Wildcats": "Kansas State", "Kennesaw State Owls": "Kennesaw State",
+    "Kent State Golden Flashes": "Kent State", "Kentucky Wildcats": "Kentucky",
+    "LSU Tigers": "LSU", "Liberty Flames": "Liberty", "Louisiana Ragin' Cajuns": "Louisiana",
+    "Louisiana Tech Bulldogs": "Louisiana Tech", "Louisville Cardinals": "Louisville",
+    "Marshall Thundering Herd": "Marshall", "Maryland Terrapins": "Maryland",
+    "Massachusetts Minutemen": "Massachusetts", "Memphis Tigers": "Memphis",
+    "Miami Hurricanes": "Miami", "Miami (OH) RedHawks": "Miami (OH)",
+    "Michigan Wolverines": "Michigan", "Michigan State Spartans": "Michigan State",
+    "Middle Tennessee Blue Raiders": "Middle Tennessee",
+    "Minnesota Golden Gophers": "Minnesota", "Mississippi State Bulldogs": "Mississippi State",
+    "Missouri Tigers": "Missouri", "Missouri State Bears": "Missouri State",
+    "NC State Wolfpack": "NC State", "Navy Midshipmen": "Navy",
+    "Nebraska Cornhuskers": "Nebraska", "Nevada Wolf Pack": "Nevada",
+    "New Mexico Lobos": "New Mexico", "New Mexico State Aggies": "New Mexico State",
+    "North Carolina Tar Heels": "North Carolina", "North Texas Mean Green": "North Texas",
+    "Northern Illinois Huskies": "Northern Illinois", "Northwestern Wildcats": "Northwestern",
+    "Notre Dame Fighting Irish": "Notre Dame", "Ohio Bobcats": "Ohio",
+    "Ohio State Buckeyes": "Ohio State", "Oklahoma Sooners": "Oklahoma",
+    "Oklahoma State Cowboys": "Oklahoma State", "Old Dominion Monarchs": "Old Dominion",
+    "Ole Miss Rebels": "Ole Miss", "Oregon Ducks": "Oregon",
+    "Oregon State Beavers": "Oregon State", "Penn State Nittany Lions": "Penn State",
+    "Pittsburgh Panthers": "Pittsburgh", "Purdue Boilermakers": "Purdue", "Rice Owls": "Rice",
+    "Rutgers Scarlet Knights": "Rutgers", "SMU Mustangs": "SMU",
+    "Sam Houston Bearkats": "Sam Houston", "San Diego State Aztecs": "San Diego State",
+    "San Jos\u00e9 State Spartans": "San Jos\u00e9 State",
+    "South Alabama Jaguars": "South Alabama", "South Carolina Gamecocks": "South Carolina",
+    "South Florida Bulls": "South Florida", "Southern Miss Golden Eagles": "Southern Miss",
+    "Stanford Cardinal": "Stanford", "Syracuse Orange": "Syracuse", "TCU Horned Frogs": "TCU",
+    "Temple Owls": "Temple", "Tennessee Volunteers": "Tennessee", "Texas Longhorns": "Texas",
+    "Texas A&M Aggies": "Texas A&M", "Texas State Bobcats": "Texas State",
+    "Texas Tech Red Raiders": "Texas Tech", "Toledo Rockets": "Toledo", "Troy Trojans": "Troy",
+    "Tulane Green Wave": "Tulane", "Tulsa Golden Hurricane": "Tulsa", "UAB Blazers": "UAB",
+    "UCF Knights": "UCF", "UCLA Bruins": "UCLA", "UConn Huskies": "UConn",
+    "UL Monroe Warhawks": "UL Monroe", "UNLV Rebels": "UNLV", "USC Trojans": "USC",
+    "UTEP Miners": "UTEP", "UTSA Roadrunners": "UTSA", "Utah Utes": "Utah",
+    "Utah State Aggies": "Utah State", "Vanderbilt Commodores": "Vanderbilt",
+    "Virginia Cavaliers": "Virginia", "Virginia Tech Hokies": "Virginia Tech",
+    "Wake Forest Demon Deacons": "Wake Forest", "Washington Huskies": "Washington",
+    "Washington State Cougars": "Washington State",
+    "West Virginia Mountaineers": "West Virginia",
+    "Western Kentucky Hilltoppers": "Western Kentucky",
+    "Western Michigan Broncos": "Western Michigan", "Wisconsin Badgers": "Wisconsin",
+    "Wyoming Cowboys": "Wyoming",
+}
+
+
+def market_spreads():
+    """(away, home) -> (home handicap, books at it, books priced). {} on any failure.
+
+    Mode across books, not median. A median of a split market lands between the clusters
+    on a number nobody posts. One line per book first, and only a two-outcome spreads
+    market counts, because an alternate ladder inside the same market is symmetric about
+    the main line and medians to zero.
+    """
+    key = os.environ.get("ODDS_API_KEY", "").strip()
+    if not key:
+        print("ODDS_API_KEY empty in this process, market anchoring off. A repository "
+              "secret is not visible to a step unless it is named in that step's env:.")
+        return {}
+    try:
+        r = requests.get(ODDS_API, headers=H, timeout=90, params={
+            "apiKey": key, "regions": ODDS_REGIONS, "markets": "spreads",
+            "oddsFormat": "american"})
+        left = r.headers.get("x-requests-remaining")
+        if r.status_code != 200:
+            print(f"odds feed HTTP {r.status_code}: {r.text[:140]}")
+            return {}
+        out, unknown = {}, set()
+        for ev in r.json():
+            ht, at = ev.get("home_team"), ev.get("away_team")
+            if ht not in ODDS_TEAM or at not in ODDS_TEAM:
+                unknown.update(t for t in (ht, at) if t and t not in ODDS_TEAM)
+                continue
+            per_book = []
+            for bk in ev.get("bookmakers", []):
+                for mk in bk.get("markets", []):
+                    outs = mk.get("outcomes", [])
+                    if mk.get("key") != "spreads" or len(outs) != 2:
+                        continue
+                    hp = [o.get("point") for o in outs if o.get("name") == ht]
+                    ap = [o.get("point") for o in outs if o.get("name") == at]
+                    if len(hp) == 1 and len(ap) == 1 and None not in (hp[0], ap[0]) \
+                            and abs(float(hp[0]) + float(ap[0])) < 1e-6:
+                        per_book.append(float(hp[0]))
+                    break
+            if not per_book:
+                continue
+            cnt = {}
+            for v in per_book:
+                cnt[v] = cnt.get(v, 0) + 1
+            top = max(cnt.values())
+            med = float(np.median(per_book))
+            ln = min((v for v, c in cnt.items() if c == top), key=lambda v: abs(v - med))
+            out[(ODDS_TEAM[at], ODDS_TEAM[ht])] = (ln, cnt[ln], len(per_book))
+        if unknown:
+            # FCS opponents land here by design and are not errors. A missing FBS school
+            # is, so the list is printed and capped rather than silently swallowed.
+            u = sorted(unknown)
+            print(f"odds feed: {len(u)} unmapped name(s), mostly FCS: {', '.join(u[:6])}"
+                  + (" ..." if len(u) > 6 else ""))
+        print(f"market: {len(out)} game(s) priced, {left or '?'} API credits left")
+        return out
+    except Exception as ex:
+        print("odds feed unavailable:", type(ex).__name__)
+        return {}
+
 
 def load_hist():
     rows = []
@@ -313,6 +473,18 @@ def run(today_str):
     mm = Ridge(alpha=5.0).fit(scm.transform(trm[E.MG].values), trm.margin.values)
     sct = StandardScaler().fit(trm[E.TT].values)
     mt = Ridge(alpha=5.0).fit(sct.transform(trm[E.TT].values), trm.total.values)
+    # The cover distribution, alongside the Ridge rather than replacing it. Measured on the
+    # 2024 and 2025 holdouts the two heads give identical margin accuracy, 12.66 against
+    # 12.67 MAE and 12.37 against 12.38, so the Ridge stays for the point estimate. What
+    # this adds is the shape around it: P(cover) at any line, push mass on whole numbers,
+    # and a probability that is calibrated. Pooled over 1,606 holdout games and nine lines
+    # it said 0.566 and delivered 0.576, with no bucket overclaiming.
+    #
+    # jmax=110, not the default 70. College margins reach 98 and 0.52% of games sit beyond
+    # 70, where their mass would be clipped. NFL and NBA pass nothing and are unaffected.
+    SP = spread.fit(trm, E.W, trm.index, C, target="margin", jmax=SPREAD_JMAX)
+    print(f"spread fit: roughness {SP['roughness']:.3f} "
+          f"(0.08 is a smooth skew correction, 0.5 is NFL's 3-7 structure)")
     base = float(f.loc[tr, "y"].mean())
 
     alerts = []
@@ -330,6 +502,10 @@ def run(today_str):
         p = mdl.predict_proba(sc.transform(rows[E.W].values))[:, 1]
         margins = mm.predict(scm.transform(rows[E.MG].values))
         totals = mt.predict(sct.transform(rows[E.TT].values))
+        sp_ph, sp_Ph, sp_Pa = spread.price(SP, rows, ph=p)
+        sp_line = spread.median_line(sp_ph, sp_Ph, sp_Pa)
+        _c3 = lambda k: spread.cover3(sp_ph, sp_Ph, sp_Pa, k)
+        mkt = market_spreads()
         ha = np.where(rows.neutral == 1, 0, CFG["HA"])
         pe = 1/(1+10**(-((rows.h_elo + ha) - rows.a_elo)/400))
         board = pd.DataFrame({"date": pd.to_datetime(rows.date).dt.strftime("%Y-%m-%d"),
@@ -351,13 +527,52 @@ def run(today_str):
         # by 7 is model_spread -7, so the sign flips.
         board["model_spread"] = -board.margin_m
         board["model_total"] = board.total_m
+        board["median_line"] = -sp_line          # the distribution's own line, home side
         board["cal"] = board.week < CAL_UNLOCK_WEEK
-        board["pick_side"] = np.where(board.p_home >= .5, "home", "away")
-        board["pick_team"] = np.where(board.p_home >= .5, board.home, board.away)
-        board["pick_prob"] = np.maximum(board.p_home, 1 - board.p_home)
+
+        # --- the pick, anchored to the market where one exists -----------------------
+        # Same structure as the NFL runner. With a book line the claim is a COVER at that
+        # exact number; without one it falls back to WINS OUTRIGHT on the model's own side,
+        # which is most of a college Saturday. Both go on the same board and each row says
+        # which it is, so a reader is never shown a cover probability with no line behind
+        # it. That mismatch is what had 48 rows rejected by the Collective.
+        pk_team, pk_side, pk_line, pk_claim, pk_prob, pk_push = [], [], [], [], [], []
+        m_line, m_books, m_tot = [], [], []
+        for i, r in enumerate(rows.itertuples()):
+            m = mkt.get((r.away, r.home))
+            if m is None:
+                hs = p[i] >= .5
+                pk_team.append(r.home if hs else r.away)
+                pk_side.append("home" if hs else "away")
+                pk_line.append(np.nan); pk_claim.append("wins outright")
+                pk_prob.append(float(max(p[i], 1 - p[i]))); pk_push.append(0.0)
+                m_line.append(np.nan); m_books.append(0); m_tot.append(0)
+                continue
+            ln, nbk, ntot = m
+            h, pu, a = _c3(-float(ln))          # home covers its own handicap
+            hc, ac = float(h[i]), float(a[i])
+            live = max(hc + ac, 1e-9)
+            take_home = (hc / live) >= 0.5
+            pk_team.append(r.home if take_home else r.away)
+            pk_side.append("home" if take_home else "away")
+            pk_line.append(float(ln) if take_home else -float(ln))
+            pk_claim.append("covers")
+            pk_prob.append((hc if take_home else ac) / live)
+            pk_push.append(float(pu[i]))
+            m_line.append(float(ln)); m_books.append(int(nbk)); m_tot.append(int(ntot))
+        board["pick_team"] = pk_team; board["pick_side"] = pk_side
+        board["pick_line"] = pk_line; board["pick_claim"] = pk_claim
+        board["pick_prob"] = pk_prob; board["pick_push"] = pk_push
+        board["book_line"] = m_line; board["book_count"] = m_books
+        board["book_total"] = m_tot
+        board["home_win_prob"] = p
+        _n = int(np.sum(np.array(m_books) > 0))
+        print(f"anchored {_n} of {len(rows)} game(s) to a book line; "
+              f"{len(rows) - _n} on the model's own line")
         keep = ["date", "game_id", "week", "season", "home", "away", "p_home", "p_elo",
-                "selected", "model", "model_spread", "model_total", "cal",
-                "pick_side", "pick_team", "pick_prob"]
+                "selected", "model", "model_spread", "model_total", "median_line", "cal",
+                "pick_side", "pick_team", "pick_line", "pick_claim", "pick_prob",
+                "pick_push", "book_line", "book_count", "book_total", "home_win_prob"]
         log = pd.concat([log[~log.game_id.isin(board.game_id)], board[keep]], ignore_index=True)
     else:
         print(f"no FBS games on or before {_hi:%Y-%m-%d}")
@@ -426,17 +641,27 @@ def run(today_str):
         # winning by 18. Flip it when the pick is on the road.
         rows = []
         for _, r in source.iterrows():
-            home_pick = r.p_home >= .5
-            hand = (-float(r.margin_m)) if home_pick else float(r.margin_m)
+            covers = str(getattr(r, "pick_claim", "")) == "covers"
+            if covers:
+                spr = BF.handicap(float(r.pick_line))
+                vb, ctx = "cover", (f"model {r.home} "
+                                    f"{BF.handicap(round(float(-r.margin_m) * 2) / 2 + 0.0)}"
+                                    f", market {r.home} {BF.handicap(float(r.book_line))} "
+                                    f"({int(r.book_count)} of {int(r.book_total)} books)")
+                if r.book_total and r.book_count / r.book_total < 0.5:
+                    ctx += " \u00b7 weak consensus"
+            else:
+                hand = (-float(r.margin_m)) if r.pick_side == "home" else float(r.margin_m)
+                spr = BF.handicap(round(hand * 2) / 2 + 0.0)
+                vb, ctx = "win", "no market line, model line shown"
             rows.append((str(r.date)[:10], f"{r.away} @ {r.home}",
-                         r.home if home_pick else r.away,
-                         max(r.p_home, 1 - r.p_home), r.game_id, r.week,
-                         BF.handicap(round(hand * 2) / 2 + 0.0)))
+                         str(r.pick_team), float(r.pick_prob), r.game_id, r.week, spr,
+                         vb, ctx))
         wg = max([len(x[1]) for x in rows] + [10])
         # Pad the whole "TEAM -6.5" token, not just the handicap. Padding the number alone
         # left the win column ragged, because the team names differ by fifteen characters.
         wp = max([len(f"{x[2]} {x[6]}") for x in rows] + [10])
-        for d_, gm, pk, q, gid, wk, spr in rows:
+        for d_, gm, pk, q, gid, wk, spr, vb, ctx in rows:
             cal = wk < CAL_UNLOCK_WEEK
             if not cal and BF.min_odds(q) < BF.PRICE_FLOOR:
                 skipped += 1
@@ -447,7 +672,8 @@ def run(today_str):
                 # WHICH side that 62.2% belonged to, which is the one thing a forecast row
                 # has to say. The model's own line rides along, so the row states a number
                 # as well as a lean.
-                ln = (f"{d_}  {gm:<{wg}}  {(pk + ' ' + spr):<{wp}}  win {q:.1%}\n"
+                ln = (f"{d_}  {gm:<{wg}}  {(pk + ' ' + spr):<{wp}}  {vb} {q:.1%}\n"
+                      f"      note: {ctx}\n"
                       f"      note: week {int(wk)} calibration, no betting until "
                       f"Week {CAL_UNLOCK_WEEK}")
                 cal_n += 1

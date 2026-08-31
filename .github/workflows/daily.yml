@@ -46,6 +46,11 @@ jobs:
           # inputs context at all. False yields an empty string, and tg_delta only treats
           # "1", "true" or "yes" as set, so an empty value is the same as unset.
           FORCE_PUSH: ${{ github.event_name == 'workflow_dispatch' && inputs.force_push && '1' || '' }}
+          # The Odds API. A repository secret is NOT visible to a step unless it is named
+          # here. Adding the secret and stopping there leaves the runner reading an empty
+          # string, so every game silently falls back to the model line while the API
+          # credit counter stays at zero. That cost a run on the NFL side.
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
 
       # Two things the original commit step got wrong.
       #

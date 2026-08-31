@@ -146,8 +146,9 @@ about 70% of the time.
 
 PICKS_COLS = ["date", "game_id", "season", "week", "away", "home",
               "pick", "pick_team", "pick_side", "pick_claim", "pick_prob",
+              "pick_line", "pick_push", "book_line", "book_count", "book_total",
               "model_spread", "model_pick_line", "model_total", "home_win_prob",
-              "cal", "final_margin", "pick_result"]
+              "cal", "final_margin", "pick_result", "model_line_result"]
 
 
 def write_picks(log):
@@ -201,9 +202,24 @@ def write_picks(log):
     p["model_spread"] = (pd.to_numeric(p.get("model_spread"), errors="coerce") * 2
                          ).round() / 2 + 0.0
     p["model_total"] = (pd.to_numeric(p.get("model_total"), errors="coerce") * 2).round() / 2
+    for c in ("pick_line", "book_line"):
+        p[c] = pd.to_numeric(p.get(c), errors="coerce")
+    p["pick_push"] = pd.to_numeric(p.get("pick_push"), errors="coerce").round(4)
+    for c in ("book_count", "book_total"):
+        p[c] = pd.to_numeric(p.get(c), errors="coerce").fillna(0).astype(int)
     # On the PICKED team, which is what the column name promises. model_spread stays on
     # the home team, as its own docstring says, so the two disagree in sign on away picks
     # and that is correct rather than a mistake.
+    # How the model's OWN line would have graded as a spread bet. Not a published pick:
+    # on a market-anchored row the claim is the book's number, and on a fallback row the
+    # claim is the moneyline. This is the only measurement of the margin model in the file,
+    # and a row can read pick_result win beside model_line_result no cover.
+    _ms = pd.to_numeric(p.get("model_spread"), errors="coerce").values
+    _h = np.where(p.pick_side.values == "home", _ms, -_ms)
+    _e = mp + _h
+    p["model_line_result"] = np.where(~np.isfinite(_e), "",
+                                      np.where(_e > 0, "cover",
+                                               np.where(_e < 0, "no cover", "push")))
     p["model_pick_line"] = [
         BF.handicap(v if sd == "home" else -v) if v == v else ""
         for v, sd in zip(p.model_spread, p.pick_side)]
@@ -214,7 +230,15 @@ def write_picks(log):
     p.to_csv(os.path.join(LOGS, "picks.csv"), index=False)
     open(os.path.join(LOGS, "picks_README.md"), "w").write(DATA_DICT)
     g = int((p.pick_result.astype(str) != "").sum())
-    print(f"picks.csv: {len(p)} pick(s), {g} graded, {len(p) - g} pending")
+    anc = int((p.book_count > 0).sum())
+    print(f"picks.csv: {len(p)} pick(s), {anc} market-anchored, {g} graded, "
+          f"{len(p) - g} pending")
+    if g:
+        d = p[p.pick_result.astype(str) != ""]
+        print(f"  claim as published {int((d.pick_result == 'win').sum())}-"
+              f"{int((d.pick_result == 'loss').sum())}   "
+              f"model line (not a pick) {int((d.model_line_result == 'cover').sum())}-"
+              f"{int((d.model_line_result == 'no cover').sum())}")
 
 
 def min_odds(p):

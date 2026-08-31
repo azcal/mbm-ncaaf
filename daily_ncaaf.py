@@ -220,7 +220,7 @@ def load_hist():
     return g
 
 def fetch_2026():
-    rows = []
+    rows, bad = [], []
     months = dt.date.today().month
     types = [(2, range(1, 19))] + ([(3, range(1, 6))] if months in (12, 1) else [])
     for st, weeks in types:
@@ -231,26 +231,55 @@ def fetch_2026():
             except Exception:
                 continue
             for e in r.get("events", []):
-                c = e["competitions"][0]
-                t = {x["homeAway"]: x for x in c["competitors"]}
-                if "home" not in t or "away" not in t:
-                    continue
-                hl, al = t["home"]["team"]["location"], t["away"]["team"]["location"]
-                hn, an = ALIAS.get(hl, hl), ALIAS.get(al, al)
-                done = bool(e["status"]["type"].get("completed"))
-                state = e["status"]["type"].get("state")
-                rows.append(dict(game_id=str(e["id"]), season=CUR_SEASON, week=wk,
-                    season_type="regular" if st == 2 else "postseason",
-                    start_date=e.get("date"), neutral_site=bool(c.get("neutralSite")),
-                    conference_game=bool(c.get("conferenceCompetition")),
-                    home_team=hn, away_team=an,
-                    home_division="fbs" if hl in ALIAS else "fcs",
-                    away_division="fbs" if al in ALIAS else "fcs",
-                    home_conference=CONF.get(hn), away_conference=CONF.get(an),
-                    home_points=float(t["home"].get("score")) if done else np.nan,
-                    away_points=float(t["away"].get("score")) if done else np.nan,
-                    completed=done, state=state))
+                # Every field below is unguarded ESPN. One event arriving without a
+                # competitions block killed an entire eighteen-week fetch with a KeyError,
+                # taking the board down over a single malformed row, and a game with a
+                # null score on a completed flag would do the same at float(). A partial
+                # event is worth skipping and counting, never worth losing the run for.
+                try:
+                    comps = e.get("competitions") or []
+                    if not comps:
+                        bad.append(str(e.get("id", "?")))
+                        continue
+                    c = comps[0]
+                    t = {x["homeAway"]: x for x in c.get("competitors", [])}
+                    if "home" not in t or "away" not in t:
+                        continue
+                    hl, al = t["home"]["team"]["location"], t["away"]["team"]["location"]
+                    hn, an = ALIAS.get(hl, hl), ALIAS.get(al, al)
+                    stat = (e.get("status") or {}).get("type") or {}
+                    done = bool(stat.get("completed"))
+                    state = stat.get("state")
+
+                    def _pts(side):
+                        """None on a completed game is real: ESPN flags a game final
+                        before the score lands. NaN keeps it out of the fit instead of
+                        raising on float(None)."""
+                        v = t[side].get("score")
+                        try:
+                            return float(v) if done and v is not None else np.nan
+                        except (TypeError, ValueError):
+                            return np.nan
+
+                    rows.append(dict(game_id=str(e["id"]), season=CUR_SEASON, week=wk,
+                        season_type="regular" if st == 2 else "postseason",
+                        start_date=e.get("date"), neutral_site=bool(c.get("neutralSite")),
+                        conference_game=bool(c.get("conferenceCompetition")),
+                        home_team=hn, away_team=an,
+                        home_division="fbs" if hl in ALIAS else "fcs",
+                        away_division="fbs" if al in ALIAS else "fcs",
+                        home_conference=CONF.get(hn), away_conference=CONF.get(an),
+                        home_points=_pts("home"), away_points=_pts("away"),
+                        completed=done, state=state))
+                except (KeyError, TypeError, IndexError) as ex:
+                    bad.append(f"{e.get('id', '?')} ({type(ex).__name__})")
             time.sleep(0.15)
+    if bad:
+        # Loud, not silent. A run that quietly drops games looks identical to a light
+        # slate, and the count is the only way to tell a one-off from ESPN reshaping
+        # its payload.
+        print(f"ESPN: skipped {len(bad)} malformed event(s): {', '.join(bad[:8])}"
+              + (" ..." if len(bad) > 8 else ""))
     d = pd.DataFrame(rows).drop_duplicates("game_id")
     if len(d):
         d["date"] = E.game_day(d.start_date)

@@ -62,6 +62,7 @@ MIN_EDGE = BF.MIN_EDGE
 HORIZON_DAYS = SPEC.get("horizon_days", 7)
 SPREAD_JMAX = int(SPEC.get("spread_jmax", 110))
 KEY_GRID = np.arange(-60.0, 61.0, 0.5)   # half AND whole numbers, so pushes can be priced
+MED_GRID = np.arange(-60.5, 61.0, 1.0)   # half points only, for median_line
 
 # --- Week 1 early window --------------------------------------------------------------
 # A date, not a wider horizon. A horizon big enough to reach the opening Saturday would
@@ -392,6 +393,63 @@ def market_spreads():
         return {}
 
 
+
+ESPN_SUM = "https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/summary"
+
+
+def espn_lines(game_ids):
+    """game_id -> home handicap, from ESPN's pickcenter. {} on any failure.
+
+    A backstop for games The Odds API does not price, which on a college Saturday is the
+    G5 and FCS-opponent end of the card. Free, no key, and the same host this runner
+    already uses for the schedule, so it adds a dependency on nothing new.
+
+    One call per game, so it is only ever asked about the handful the paid feed missed,
+    never the whole slate. The scoreboard endpoint carries an odds block too but it was
+    populated on 7 of 86 games and mostly null; pickcenter is the one that answers.
+
+    ESPN's `spread` field is signed on the FAVOURITE, not the home team: UNLV at Hawai'i
+    came back spread 3.0 with details "UNLV -3", which is Hawai'i +3. Reading it as a home
+    number would invert every away favourite, so the sign is taken from `details` and
+    `spread` is used only for its magnitude.
+    """
+    out = {}
+    for gid in game_ids:
+        try:
+            j = requests.get(ESPN_SUM, params={"event": str(gid)}, headers=H,
+                             timeout=45).json()
+            for pc in (j.get("pickcenter") or []):
+                det = str(pc.get("details") or "").strip()
+                mag = pc.get("spread")
+                if not det or mag is None:
+                    continue
+                if det.upper() in ("EVEN", "PK", "PICK"):
+                    out[str(gid)] = 0.0
+                    break
+                parts = det.rsplit(" ", 1)
+                if len(parts) != 2:
+                    continue
+                abbr = parts[0].strip()
+                try:
+                    num = -abs(float(parts[1]))
+                except ValueError:
+                    continue
+                hd = ((j.get("header") or {}).get("competitions") or [{}])[0]
+                tm = {c.get("homeAway"): (c.get("team") or {}).get("abbreviation")
+                      for c in hd.get("competitors", [])}
+                if tm.get("home") == abbr:
+                    out[str(gid)] = num          # home is the favourite
+                elif tm.get("away") == abbr:
+                    out[str(gid)] = -num         # away favourite, so home is the dog
+                else:
+                    continue
+                break
+        except Exception:
+            continue
+        time.sleep(0.12)
+    return out
+
+
 def load_hist():
     rows = []
     for y in range(2016, 2026):
@@ -527,9 +585,28 @@ def run(today_str):
         margins = mm.predict(scm.transform(rows[E.MG].values))
         totals = mt.predict(sct.transform(rows[E.TT].values))
         sp_ph, sp_Ph, sp_Pa = spread.price(SP, rows, ph=p)
-        sp_line = spread.median_line(sp_ph, sp_Ph, sp_Pa)
+        # An explicit grid. median_line defaults to +/-40.5, which is an NFL range: it
+        # silently clipped Ohio State -46.5, Oklahoma -41.5 and Texas A&M -41 to the edge.
+        # MED_GRID is half points only, as median_line requires, so its own line can never
+        # land on a whole number where a game could push.
+        sp_line = spread.median_line(sp_ph, sp_Ph, sp_Pa, grid=MED_GRID)
         _c3 = lambda k: spread.cover3(sp_ph, sp_Ph, sp_Pa, k)
         mkt = market_spreads()
+        # Second tier for whatever the paid feed missed, which on a college card is the
+        # G5 and FCS-opponent end. Asked only about those games, never the whole slate.
+        _gap = [(r.game_id, r.away, r.home) for r in rows.itertuples()
+                if (r.away, r.home) not in mkt]
+        if _gap:
+            _e = espn_lines([g for g, _, _ in _gap])
+            _added = 0
+            for gid, aw, hm in _gap:
+                if str(gid) in _e:
+                    # book_count 0 marks the source: one book, from ESPN, not a consensus
+                    # across nine. A reader can tell a nine-book number from a single quote.
+                    mkt[(aw, hm)] = (float(_e[str(gid)]), 1, 1)
+                    _added += 1
+            print(f"ESPN pickcenter: filled {_added} of {len(_gap)} game(s) "
+                  f"the odds feed did not price")
         ha = np.where(rows.neutral == 1, 0, CFG["HA"])
         pe = 1/(1+10**(-((rows.h_elo + ha) - rows.a_elo)/400))
         board = pd.DataFrame({"date": pd.to_datetime(rows.date).dt.strftime("%Y-%m-%d"),
@@ -565,11 +642,25 @@ def run(today_str):
         for i, r in enumerate(rows.itertuples()):
             m = mkt.get((r.away, r.home))
             if m is None:
-                hs = p[i] >= .5
+                # No book prices this game, so the model's own line becomes the pick. It
+                # is still a spread claim, graded as one, which keeps every row on the
+                # board the same kind of thing: previously these published a moneyline
+                # while displaying a spread, so the file and the row disagreed.
+                #
+                # The probability sits near 50% by construction, because a median line is
+                # exactly the number where the game is a coin flip. That is the honest
+                # reading of an unpriced game, not a defect: the model has a number and no
+                # opinion on which side of it to take. home_win_prob carries the outright
+                # view for anyone who wants it.
+                med = float(sp_line[i])
+                hs = med > 0 if med != 0 else p[i] >= .5
+                h, pu, a = _c3(med)
+                hc, ac = float(h[i]), float(a[i])
+                live = max(hc + ac, 1e-9)
                 pk_team.append(r.home if hs else r.away)
                 pk_side.append("home" if hs else "away")
-                pk_line.append(np.nan); pk_claim.append("wins outright")
-                pk_prob.append(float(max(p[i], 1 - p[i]))); pk_push.append(0.0)
+                pk_line.append(-abs(med)); pk_claim.append("covers")
+                pk_prob.append((hc if hs else ac) / live); pk_push.append(float(pu[i]))
                 m_line.append(np.nan); m_books.append(0); m_tot.append(0)
                 continue
             ln, nbk, ntot = m
@@ -668,16 +759,20 @@ def run(today_str):
             covers = str(getattr(r, "pick_claim", "")) == "covers"
             if covers:
                 spr = BF.handicap(float(r.pick_line))
+                _src = ("ESPN, 1 book" if int(r.book_total) == 1
+                        else f"{int(r.book_count)} of {int(r.book_total)} books")
                 vb, ctx = "cover", (f"model {r.home} "
                                     f"{BF.handicap(round(float(-r.margin_m) * 2) / 2 + 0.0)}"
                                     f", market {r.home} {BF.handicap(float(r.book_line))} "
-                                    f"({int(r.book_count)} of {int(r.book_total)} books)")
-                if r.book_total and r.book_count / r.book_total < 0.5:
+                                    f"({_src})")
+                if int(r.book_total) > 1 and r.book_count / r.book_total < 0.5:
                     ctx += " \u00b7 weak consensus"
             else:
-                hand = (-float(r.margin_m)) if r.pick_side == "home" else float(r.margin_m)
-                spr = BF.handicap(round(hand * 2) / 2 + 0.0)
-                vb, ctx = "win", "no market line, model line shown"
+                spr = BF.handicap(float(r.pick_line))
+                vb = "cover"
+                ctx = (f"no market line, model's own line \u00b7 "
+                       f"{r.pick_team} wins outright "
+                       f"{(r.p_home if r.pick_side == 'home' else 1 - r.p_home):.0%}")
             rows.append((str(r.date)[:10], f"{r.away} @ {r.home}",
                          str(r.pick_team), float(r.pick_prob), r.game_id, r.week, spr,
                          vb, ctx))

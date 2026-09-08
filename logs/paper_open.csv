@@ -41,7 +41,7 @@ snap_date,date,week,season,game_id,away,home,pick_team,pick_side,pick_line,pick_
 2026-09-02,2026-09-06,1,2026,401858437,Washington State,Washington,Washington State,away,23.5,0.7293,covers,-23.5,7.0,0,win,0.909,2026-09-07
 2026-09-02,2026-09-06,1,2026,401856661,Louisville,Ole Miss,Ole Miss,home,-7.0,0.5454,covers,-7.0,7.0,0,loss,-1.0,2026-09-07
 2026-09-02,2026-09-06,1,2026,401858438,Wisconsin,Notre Dame,Notre Dame,home,-20.5,0.606,covers,-20.5,8.0,0,win,0.909,2026-09-07
-2026-09-02,2026-09-07,1,2026,401858212,SMU,Florida State,SMU,away,-3.0,0.5816,covers,3.0,8.0,0,,,
+2026-09-02,2026-09-07,1,2026,401858212,SMU,Florida State,SMU,away,-3.0,0.5816,covers,3.0,8.0,0,push,0.0,2026-09-08
 2026-09-07,2026-09-11,2,2026,401858214,Rutgers,Boston College,Rutgers,away,3.5,0.5299,covers,-3.5,9.0,0,,,
 2026-09-07,2026-09-11,2,2026,401856678,Missouri,Kansas,Kansas,home,5.5,0.5785,covers,5.5,8.0,0,,,
 2026-09-07,2026-09-12,2,2026,401856679,Oklahoma,Michigan,Michigan,home,5.5,0.5663,covers,5.5,8.0,0,,,

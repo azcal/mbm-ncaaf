@@ -11,7 +11,7 @@ import math
 
 # Bumped whenever this file changes. Every runner asserts on it at import, so a repo
 # holding an old copy fails in the workflow's import guard instead of rendering wrong.
-VERSION = "2026-08-20"
+VERSION = "2026-09-13"
 
 # Zero on purpose. The board publishes the EXACT price at which a bet breaks even, and the
 # row reads "or better", so choosing a margin is the bettor's job at the book rather than
@@ -134,6 +134,8 @@ def handicap(x):
     was carrying its sign, and a board row reading "BUF -0" is not a line anyone posts.
     A pick'em has no handicap, so it gets the name books give it."""
     x = float(x)
+    if x != x:
+        return "n/a"          # no line to quote (a game anchored to the model's own number)
     if x == 0:
         return "PK"
     return f"{x:+.0f}" if x == int(x) else f"{x:+.1f}"

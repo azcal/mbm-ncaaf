@@ -431,8 +431,8 @@ date,game_id,season,week,away,home,pick,pick_team,pick_side,pick_claim,pick_prob
 2026-10-24,401871093,2026,8,Old Dominion,Louisiana Tech,Old Dominion +13.5,Old Dominion,away,covers,0.6593,13.5,0.0,-13.5,1,1,-7.5,+7.5,50.0,0.7133,False,26.0,loss,no cover
 2026-10-24,401871094,2026,8,UL Monroe,Troy,Troy -12.5,Troy,home,covers,0.6051,-12.5,0.0,-12.5,1,1,-17.5,-17.5,51.5,0.8785,False,-7.0,loss,no cover
 2026-10-27,401871071,2026,9,Delaware,Western Kentucky,Western Kentucky -1.5,Western Kentucky,home,covers,0.5417,-1.5,0.0,-1.5,1,1,-2.0,-2,57.0,0.5651,False,,,
-2026-10-27,401871072,2026,9,Sam Houston,Missouri State,Missouri State -5.5,Missouri State,home,covers,0.5254,-5.5,0.0,-5.5,1,1,-6.5,-6.5,56.5,0.6894,False,,,
-2026-10-28,401871057,2026,9,Jacksonville State,New Mexico State,New Mexico State +3.5,New Mexico State,home,covers,0.516,3.5,0.0,3.5,1,1,4.5,+4.5,54.0,0.41,False,,,
+2026-10-27,401871072,2026,9,Sam Houston,Missouri State,Missouri State -6,Missouri State,home,covers,0.5136,-6.0,0.0243,-6.0,1,1,-6.5,-6.5,56.5,0.6894,False,,,
+2026-10-28,401871057,2026,9,Jacksonville State,New Mexico State,Jacksonville State -3,Jacksonville State,away,covers,0.5181,-3.0,0.0658,3.0,1,1,4.5,-4.5,54.0,0.41,False,,,
 2026-10-28,401871058,2026,9,Kennesaw State,Middle Tennessee,Middle Tennessee -2.5,Middle Tennessee,home,covers,0.5099,-2.5,0.0,-2.5,1,1,-1.0,-1,52.5,0.5575,False,,,
 2026-10-29,401862812,2026,9,Florida Atlantic,North Texas,North Texas -13.5,North Texas,home,covers,0.526,-13.5,0.0,-13.5,1,1,-14.5,-14.5,77.0,0.8388,False,,,
 2026-10-29,401869963,2026,9,Troy,James Madison,James Madison -21,James Madison,home,covers,0.5586,-21.0,0.042,-21.0,1,1,-23.5,-23.5,55.0,0.934,False,,,
@@ -442,7 +442,7 @@ date,game_id,season,week,away,home,pick,pick_team,pick_side,pick_claim,pick_prob
 2026-10-31,401856734,2026,9,Florida,Georgia,Florida +11.5,Florida,away,covers,0.5045,11.5,0.0,-11.5,1,1,-13.0,+13,55.0,0.8033,False,,,
 2026-10-31,401856735,2026,9,Auburn,Ole Miss,Auburn +13.5,Auburn,away,covers,0.5657,13.5,0.0,-13.5,1,1,-11.5,+11.5,56.0,0.7981,False,,,
 2026-10-31,401856736,2026,9,South Carolina,Oklahoma,South Carolina +5.5,South Carolina,away,covers,0.5996,5.5,0.0,-5.5,1,1,-1.5,+1.5,47.5,0.5645,False,,,
-2026-10-31,401856737,2026,9,Mississippi State,Texas,Mississippi State +21,Mississippi State,away,covers,0.6066,21.0,0.0409,-21.0,1,1,-17.0,+17,57.5,0.8738,False,,,
+2026-10-31,401856737,2026,9,Mississippi State,Texas,Mississippi State +20.5,Mississippi State,away,covers,0.5818,20.5,0.0,-20.5,1,1,-17.0,+17,57.5,0.8738,False,,,
 2026-10-31,401856842,2026,9,Arizona,Texas Tech,Arizona +3.5,Arizona,away,covers,0.5701,3.5,0.0,-3.5,1,1,-1.0,+1,56.0,0.5445,False,,,
 2026-10-31,401856843,2026,9,Arizona State,BYU,Arizona State +16.5,Arizona State,away,covers,0.6069,16.5,0.0,-16.5,1,1,-12.0,+12,54.5,0.8,False,,,
 2026-10-31,401856845,2026,9,Kansas,TCU,Kansas +6,Kansas,away,covers,0.563,6.0,0.0241,-6.0,1,1,-3.5,+3.5,50.0,0.6199,False,,,
@@ -450,7 +450,7 @@ date,game_id,season,week,away,home,pick,pick_team,pick_side,pick_claim,pick_prob
 2026-10-31,401856847,2026,9,Oklahoma State,Iowa State,Iowa State +8.5,Iowa State,home,covers,0.7511,8.5,0.0,8.5,1,1,0.0,PK,56.0,0.5238,False,,,
 2026-10-31,401856848,2026,9,Utah,Cincinnati,Utah -6.5,Utah,away,covers,0.5426,-6.5,0.0,6.5,1,1,9.0,-9,58.0,0.2935,False,,,
 2026-10-31,401858277,2026,9,California,NC State,NC State -7,NC State,home,covers,0.6163,-7.0,0.0606,-7.0,1,1,-12.5,-12.5,59.0,0.8024,False,,,
-2026-10-31,401858278,2026,9,SMU,Syracuse,SMU -9.5,SMU,away,covers,0.5334,-9.5,0.0,9.5,1,1,12.0,-12,58.5,0.2205,False,,,
+2026-10-31,401858278,2026,9,SMU,Syracuse,SMU -10,SMU,away,covers,0.5164,-10.0,0.0351,10.0,1,1,12.0,-12,58.5,0.2205,False,,,
 2026-10-31,401858279,2026,9,Boston College,Duke,Duke -7,Duke,home,covers,0.5477,-7.0,0.0635,-7.0,1,1,-9.5,-9.5,55.0,0.7539,False,,,
 2026-10-31,401858280,2026,9,Clemson,Florida State,Clemson +6,Clemson,away,covers,0.5332,6.0,0.0223,-6.0,1,1,-5.0,+5,52.0,0.6301,False,,,
 2026-10-31,401858281,2026,9,Georgia Tech,Pittsburgh,Pittsburgh -7.5,Pittsburgh,home,covers,0.5002,-7.5,0.0,-7.5,1,1,-9.0,-9,58.0,0.7434,False,,,

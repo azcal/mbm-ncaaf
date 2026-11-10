@@ -478,64 +478,129 @@ snap_date,date,week,season,game_id,away,home,pick_team,pick_side,pick_line,pick_
 2026-10-26,2026-10-31,9,2026,401860908,Texas State,Boise State,Texas State,away,11.5,0.6355,covers,-11.5,1.0,0,win,0.909,2026-11-02
 2026-10-26,2026-10-31,9,2026,401864530,Northern Illinois,UNLV,Northern Illinois,away,24.5,0.6222,covers,-24.5,1.0,0,win,0.909,2026-11-02
 2026-10-26,2026-10-31,9,2026,401860924,Oregon State,Fresno State,Oregon State,away,-5.5,0.5869,covers,5.5,1.0,0,loss,-1.0,2026-11-02
-2026-11-02,2026-11-03,10,2026,401866453,Ohio,Akron,Ohio,away,-13.5,0.5423,covers,13.5,6.0,0,,,
-2026-11-02,2026-11-03,10,2026,401866454,Buffalo,Miami (OH),Buffalo,away,6.5,0.5201,covers,-6.5,6.0,0,,,
-2026-11-02,2026-11-04,10,2026,401866455,Ball State,Massachusetts,Massachusetts,home,-3.0,0.529,covers,-3.0,1.0,0,,,
-2026-11-02,2026-11-04,10,2026,401866456,Central Michigan,Eastern Michigan,Central Michigan,away,1.5,0.5506,covers,-1.5,7.0,0,,,
-2026-11-02,2026-11-05,10,2026,401862817,UTSA,Florida Atlantic,UTSA,away,-7.0,0.5031,covers,7.0,7.0,0,,,
-2026-11-02,2026-11-05,10,2026,401869964,James Madison,Southern Miss,James Madison,away,-14.5,0.5335,covers,14.5,1.0,0,,,
-2026-11-02,2026-11-06,10,2026,401858288,Virginia Tech,SMU,SMU,home,-6.0,0.546,covers,-6.0,7.0,0,,,
-2026-11-02,2026-11-06,10,2026,401862818,South Florida,East Carolina,South Florida,away,1.5,0.5629,covers,-1.5,6.0,0,,,
-2026-11-02,2026-11-06,10,2026,401858510,Nebraska,Illinois,Illinois,home,4.5,0.6087,covers,4.5,8.0,0,,,
-2026-11-02,2026-11-06,10,2026,401864533,New Mexico,Nevada,New Mexico,away,-9.5,0.5202,covers,9.5,7.0,0,,,
-2026-11-02,2026-11-06,10,2026,401856855,TCU,Arizona,Arizona,home,-9.0,0.521,covers,-9.0,3.0,0,,,
-2026-11-02,2026-11-07,10,2026,401856743,Texas,Missouri,Texas,away,-2.5,0.5079,covers,2.5,6.0,0,,,
-2026-11-02,2026-11-07,10,2026,401856849,BYU,Utah,Utah,home,-5.5,0.58,covers,-5.5,5.0,0,,,
-2026-11-02,2026-11-07,10,2026,401856853,Iowa State,Baylor,Iowa State,away,10.0,0.6291,covers,-10.0,5.0,0,,,
-2026-11-02,2026-11-07,10,2026,401858285,Clemson,Syracuse,Clemson,away,-2.5,0.5409,covers,2.5,8.0,0,,,
-2026-11-02,2026-11-07,10,2026,401858289,Florida State,Boston College,Boston College,home,7.0,0.5888,covers,7.0,7.0,0,,,
-2026-11-02,2026-11-07,10,2026,401858292,North Carolina,UConn,UConn,home,7.0,0.5005,covers,7.0,7.0,0,,,
-2026-11-02,2026-11-07,10,2026,401858512,UCLA,Minnesota,Minnesota,home,5.5,0.5936,covers,5.5,4.0,0,,,
-2026-11-02,2026-11-07,10,2026,401862822,Tulsa,Tulane,Tulane,home,1.5,0.7084,covers,1.5,5.0,1,,,
-2026-11-02,2026-11-07,10,2026,401858286,Duke,NC State,NC State,home,4.5,0.5212,covers,4.5,8.0,0,,,
-2026-11-02,2026-11-07,10,2026,401858515,Maryland,Purdue,Maryland,away,6.5,0.5312,covers,-6.5,7.0,0,,,
-2026-11-02,2026-11-07,10,2026,401856738,Arkansas,Auburn,Arkansas,away,10.5,0.5615,covers,-10.5,7.0,0,,,
-2026-11-02,2026-11-07,10,2026,401856854,Oklahoma State,Kansas State,Kansas State,home,4.0,0.6613,covers,4.0,7.0,1,,,
-2026-11-02,2026-11-07,10,2026,401869945,Old Dominion,Coastal Carolina,Old Dominion,away,7.0,0.5928,covers,-7.0,7.0,0,,,
-2026-11-02,2026-11-07,10,2026,401869927,Georgia State,App State,Georgia State,away,5.5,0.5621,covers,-5.5,1.0,0,,,
-2026-11-02,2026-11-07,10,2026,401856744,Texas A&M,South Carolina,Texas A&M,away,7.0,0.5749,covers,-7.0,7.0,0,,,
-2026-11-02,2026-11-07,10,2026,401869936,UL Monroe,Arkansas State,Arkansas State,home,-14.5,0.569,covers,-14.5,8.0,0,,,
-2026-11-02,2026-11-07,10,2026,401871073,Delaware,Kennesaw State,Kennesaw State,home,2.0,0.531,covers,2.0,6.0,0,,,
-2026-11-02,2026-11-07,10,2026,401856740,Alabama,LSU,Alabama,away,5.0,0.5492,covers,-5.0,4.0,0,,,
-2026-11-02,2026-11-07,10,2026,401856851,Cincinnati,Houston,Cincinnati,away,11.0,0.6095,covers,-11.0,6.0,0,,,
-2026-11-02,2026-11-07,10,2026,401858514,Oregon,Ohio State,Ohio State,home,-7.0,0.5696,covers,-7.0,6.0,0,,,
-2026-11-02,2026-11-07,10,2026,401858516,Penn State,Washington,Washington,home,-2.0,0.5616,covers,-2.0,6.0,0,,,
-2026-11-02,2026-11-07,10,2026,401862819,Charlotte,UAB,UAB,home,-10.0,0.5018,covers,-10.0,7.0,0,,,
-2026-11-02,2026-11-07,10,2026,401862820,Temple,Navy,Navy,home,-7.5,0.5128,covers,-7.5,8.0,0,,,
-2026-11-02,2026-11-07,10,2026,401869951,Marshall,Georgia Southern,Marshall,away,10.0,0.6282,covers,-10.0,4.0,0,,,
-2026-11-02,2026-11-07,10,2026,401871076,Western Kentucky,Middle Tennessee,Western Kentucky,away,-1.0,0.5069,covers,1.0,4.0,0,,,
-2026-11-02,2026-11-07,10,2026,401856850,UCF,Kansas,Kansas,home,-2.5,0.5905,covers,-2.5,7.0,0,,,
-2026-11-02,2026-11-07,10,2026,401862821,Rice,North Texas,North Texas,home,-16.5,0.5846,covers,-16.5,6.0,0,,,
-2026-11-02,2026-11-07,10,2026,401864534,Northern Illinois,San José State,Northern Illinois,away,10.0,0.5633,covers,-10.0,1.0,0,,,
-2026-11-02,2026-11-07,10,2026,401871074,Missouri State,Florida International,Missouri State,away,4.5,0.5454,covers,-4.5,5.0,0,,,
-2026-11-02,2026-11-07,10,2026,401871098,Louisiana Tech,Troy,Louisiana Tech,away,-4.5,0.5023,covers,4.5,5.0,0,,,
-2026-11-02,2026-11-07,10,2026,401856742,Vanderbilt,Mississippi State,Vanderbilt,away,3.0,0.524,covers,-3.0,8.0,0,,,
-2026-11-02,2026-11-07,10,2026,401858517,Rutgers,Wisconsin,Rutgers,away,17.0,0.6586,covers,-17.0,5.0,1,,,
-2026-11-02,2026-11-07,10,2026,401869968,South Alabama,Louisiana,South Alabama,away,8.5,0.5625,covers,-8.5,1.0,0,,,
-2026-11-02,2026-11-07,10,2026,401860911,Boise State,Colorado State,Colorado State,home,17.5,0.5277,covers,17.5,9.0,0,,,
-2026-11-02,2026-11-07,10,2026,401856745,Kentucky,Tennessee,Kentucky,away,6.5,0.5202,covers,-6.5,9.0,0,,,
-2026-11-02,2026-11-07,10,2026,401871075,Sam Houston,Jacksonville State,Jacksonville State,home,-16.5,0.5294,covers,-16.5,1.0,0,,,
-2026-11-02,2026-11-07,10,2026,401856741,Georgia,Ole Miss,Ole Miss,home,3.5,0.6206,covers,3.5,8.0,0,,,
-2026-11-02,2026-11-07,10,2026,401856852,Colorado,Arizona State,Arizona State,home,-3.0,0.7097,covers,-3.0,7.0,1,,,
-2026-11-02,2026-11-07,10,2026,401858287,Louisville,Georgia Tech,Georgia Tech,home,14.5,0.547,covers,14.5,8.0,0,,,
-2026-11-02,2026-11-07,10,2026,401858291,Miami,Notre Dame,Miami,away,5.5,0.571,covers,-5.5,8.0,0,,,
-2026-11-02,2026-11-07,10,2026,401858511,Michigan State,Michigan,Michigan State,away,13.0,0.5021,covers,-13.0,6.0,0,,,
-2026-11-02,2026-11-07,10,2026,401858513,Iowa,Northwestern,Iowa,away,2.5,0.5748,covers,-2.5,8.0,0,,,
-2026-11-02,2026-11-07,10,2026,401862823,Air Force,Army,Army,home,-3.5,0.6027,covers,-3.5,7.0,0,,,
-2026-11-02,2026-11-07,10,2026,401856739,Oklahoma,Florida,Oklahoma,away,6.5,0.6014,covers,-6.5,8.0,0,,,
-2026-11-02,2026-11-07,10,2026,401870795,Liberty,New Mexico State,New Mexico State,home,17.0,0.5463,covers,17.0,6.0,0,,,
-2026-11-02,2026-11-07,10,2026,401856856,West Virginia,Texas Tech,West Virginia,away,17.0,0.5437,covers,-17.0,5.0,0,,,
-2026-11-02,2026-11-07,10,2026,401860913,Fresno State,Utah State,Fresno State,away,-2.5,0.634,covers,2.5,6.0,0,,,
-2026-11-02,2026-11-07,10,2026,401864532,Hawai'i,UTEP,Hawai'i,away,-9.5,0.5622,covers,9.5,1.0,0,,,
-2026-11-02,2026-11-07,10,2026,401860912,Texas State,Oregon State,Oregon State,home,-6.5,0.5932,covers,-6.5,9.0,0,,,
-2026-11-02,2026-11-07,10,2026,401864535,Wyoming,UNLV,Wyoming,away,6.0,0.5009,covers,-6.0,6.0,0,,,
+2026-11-02,2026-11-03,10,2026,401866453,Ohio,Akron,Ohio,away,-13.5,0.5423,covers,13.5,6.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-03,10,2026,401866454,Buffalo,Miami (OH),Buffalo,away,6.5,0.5201,covers,-6.5,6.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-04,10,2026,401866455,Ball State,Massachusetts,Massachusetts,home,-3.0,0.529,covers,-3.0,1.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-04,10,2026,401866456,Central Michigan,Eastern Michigan,Central Michigan,away,1.5,0.5506,covers,-1.5,7.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-05,10,2026,401862817,UTSA,Florida Atlantic,UTSA,away,-7.0,0.5031,covers,7.0,7.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-05,10,2026,401869964,James Madison,Southern Miss,James Madison,away,-14.5,0.5335,covers,14.5,1.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-06,10,2026,401858288,Virginia Tech,SMU,SMU,home,-6.0,0.546,covers,-6.0,7.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-06,10,2026,401862818,South Florida,East Carolina,South Florida,away,1.5,0.5629,covers,-1.5,6.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-06,10,2026,401858510,Nebraska,Illinois,Illinois,home,4.5,0.6087,covers,4.5,8.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-06,10,2026,401864533,New Mexico,Nevada,New Mexico,away,-9.5,0.5202,covers,9.5,7.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-06,10,2026,401856855,TCU,Arizona,Arizona,home,-9.0,0.521,covers,-9.0,3.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401856743,Texas,Missouri,Texas,away,-2.5,0.5079,covers,2.5,6.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401856849,BYU,Utah,Utah,home,-5.5,0.58,covers,-5.5,5.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401856853,Iowa State,Baylor,Iowa State,away,10.0,0.6291,covers,-10.0,5.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401858285,Clemson,Syracuse,Clemson,away,-2.5,0.5409,covers,2.5,8.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401858289,Florida State,Boston College,Boston College,home,7.0,0.5888,covers,7.0,7.0,0,push,0.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401858292,North Carolina,UConn,UConn,home,7.0,0.5005,covers,7.0,7.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401858512,UCLA,Minnesota,Minnesota,home,5.5,0.5936,covers,5.5,4.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401862822,Tulsa,Tulane,Tulane,home,1.5,0.7084,covers,1.5,5.0,1,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401858286,Duke,NC State,NC State,home,4.5,0.5212,covers,4.5,8.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401858515,Maryland,Purdue,Maryland,away,6.5,0.5312,covers,-6.5,7.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401856738,Arkansas,Auburn,Arkansas,away,10.5,0.5615,covers,-10.5,7.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401856854,Oklahoma State,Kansas State,Kansas State,home,4.0,0.6613,covers,4.0,7.0,1,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401869945,Old Dominion,Coastal Carolina,Old Dominion,away,7.0,0.5928,covers,-7.0,7.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401869927,Georgia State,App State,Georgia State,away,5.5,0.5621,covers,-5.5,1.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401856744,Texas A&M,South Carolina,Texas A&M,away,7.0,0.5749,covers,-7.0,7.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401869936,UL Monroe,Arkansas State,Arkansas State,home,-14.5,0.569,covers,-14.5,8.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401871073,Delaware,Kennesaw State,Kennesaw State,home,2.0,0.531,covers,2.0,6.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401856740,Alabama,LSU,Alabama,away,5.0,0.5492,covers,-5.0,4.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401856851,Cincinnati,Houston,Cincinnati,away,11.0,0.6095,covers,-11.0,6.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401858514,Oregon,Ohio State,Ohio State,home,-7.0,0.5696,covers,-7.0,6.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401858516,Penn State,Washington,Washington,home,-2.0,0.5616,covers,-2.0,6.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401862819,Charlotte,UAB,UAB,home,-10.0,0.5018,covers,-10.0,7.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401862820,Temple,Navy,Navy,home,-7.5,0.5128,covers,-7.5,8.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401869951,Marshall,Georgia Southern,Marshall,away,10.0,0.6282,covers,-10.0,4.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401871076,Western Kentucky,Middle Tennessee,Western Kentucky,away,-1.0,0.5069,covers,1.0,4.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401856850,UCF,Kansas,Kansas,home,-2.5,0.5905,covers,-2.5,7.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401862821,Rice,North Texas,North Texas,home,-16.5,0.5846,covers,-16.5,6.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401864534,Northern Illinois,San José State,Northern Illinois,away,10.0,0.5633,covers,-10.0,1.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401871074,Missouri State,Florida International,Missouri State,away,4.5,0.5454,covers,-4.5,5.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401871098,Louisiana Tech,Troy,Louisiana Tech,away,-4.5,0.5023,covers,4.5,5.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401856742,Vanderbilt,Mississippi State,Vanderbilt,away,3.0,0.524,covers,-3.0,8.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401858517,Rutgers,Wisconsin,Rutgers,away,17.0,0.6586,covers,-17.0,5.0,1,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401869968,South Alabama,Louisiana,South Alabama,away,8.5,0.5625,covers,-8.5,1.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401860911,Boise State,Colorado State,Colorado State,home,17.5,0.5277,covers,17.5,9.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401856745,Kentucky,Tennessee,Kentucky,away,6.5,0.5202,covers,-6.5,9.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401871075,Sam Houston,Jacksonville State,Jacksonville State,home,-16.5,0.5294,covers,-16.5,1.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401856741,Georgia,Ole Miss,Ole Miss,home,3.5,0.6206,covers,3.5,8.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401856852,Colorado,Arizona State,Arizona State,home,-3.0,0.7097,covers,-3.0,7.0,1,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401858287,Louisville,Georgia Tech,Georgia Tech,home,14.5,0.547,covers,14.5,8.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401858291,Miami,Notre Dame,Miami,away,5.5,0.571,covers,-5.5,8.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401858511,Michigan State,Michigan,Michigan State,away,13.0,0.5021,covers,-13.0,6.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401858513,Iowa,Northwestern,Iowa,away,2.5,0.5748,covers,-2.5,8.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401862823,Air Force,Army,Army,home,-3.5,0.6027,covers,-3.5,7.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401856739,Oklahoma,Florida,Oklahoma,away,6.5,0.6014,covers,-6.5,8.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401870795,Liberty,New Mexico State,New Mexico State,home,17.0,0.5463,covers,17.0,6.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401856856,West Virginia,Texas Tech,West Virginia,away,17.0,0.5437,covers,-17.0,5.0,0,win,0.909,2026-11-10
+2026-11-02,2026-11-07,10,2026,401860913,Fresno State,Utah State,Fresno State,away,-2.5,0.634,covers,2.5,6.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401864532,Hawai'i,UTEP,Hawai'i,away,-9.5,0.5622,covers,9.5,1.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401860912,Texas State,Oregon State,Oregon State,home,-6.5,0.5932,covers,-6.5,9.0,0,loss,-1.0,2026-11-10
+2026-11-02,2026-11-07,10,2026,401864535,Wyoming,UNLV,Wyoming,away,6.0,0.5009,covers,-6.0,6.0,0,win,0.909,2026-11-10
+2026-11-10,2026-11-10,11,2026,401866458,Western Michigan,Akron,Western Michigan,away,-14.0,0.5058,covers,14.0,7.0,0,,,
+2026-11-10,2026-11-10,11,2026,401866459,Kent State,Bowling Green,Bowling Green,home,-5.5,0.5934,covers,-5.5,8.0,0,,,
+2026-11-10,2026-11-10,11,2026,401866460,Ohio,Miami (OH),Ohio,away,-1.5,0.5116,covers,1.5,5.0,0,,,
+2026-11-10,2026-11-11,11,2026,401866461,Buffalo,Ball State,Buffalo,away,-2.5,0.6164,covers,2.5,6.0,0,,,
+2026-11-10,2026-11-11,11,2026,401866463,Massachusetts,Toledo,Toledo,home,-14.5,0.5631,covers,-14.5,1.0,0,,,
+2026-11-10,2026-11-12,11,2026,401862824,Memphis,South Florida,South Florida,home,4.5,0.5919,covers,4.5,6.0,0,,,
+2026-11-10,2026-11-12,11,2026,401869969,Louisiana,UL Monroe,Louisiana,away,-11.5,0.511,covers,11.5,1.0,0,,,
+2026-11-10,2026-11-13,11,2026,401858293,Florida State,Pittsburgh,Pittsburgh,home,-3.5,0.523,covers,-3.5,9.0,0,,,
+2026-11-10,2026-11-13,11,2026,401858526,Illinois,UCLA,Illinois,away,10.0,0.6063,covers,-10.0,6.0,0,,,
+2026-11-10,2026-11-13,11,2026,401856860,Houston,Colorado,Houston,away,-10.5,0.508,covers,10.5,5.0,0,,,
+2026-11-10,2026-11-14,11,2026,401856859,Cincinnati,Iowa State,Iowa State,home,-3.0,0.5053,covers,-3.0,6.0,0,,,
+2026-11-10,2026-11-14,11,2026,401856886,Auburn,Mississippi State,Auburn,away,-2.5,0.5241,covers,2.5,8.0,0,,,
+2026-11-10,2026-11-14,11,2026,401858296,Duke,Miami,Duke,away,13.5,0.6028,covers,-13.5,7.0,0,,,
+2026-11-10,2026-11-14,11,2026,401858300,Syracuse,NC State,NC State,home,3.0,0.698,covers,3.0,7.0,0,,,
+2026-11-10,2026-11-14,11,2026,401858301,Wake Forest,SMU,Wake Forest,away,-1.0,0.5962,covers,1.0,5.0,0,,,
+2026-11-10,2026-11-14,11,2026,401858520,Wisconsin,Maryland,Maryland,home,7.5,0.5288,covers,7.5,4.0,0,,,
+2026-11-10,2026-11-14,11,2026,401858522,Northwestern,Ohio State,Northwestern,away,12.5,0.5303,covers,-12.5,8.0,0,,,
+2026-11-10,2026-11-14,11,2026,401861967,James Madison,UConn,James Madison,away,-4.0,0.6531,covers,4.0,7.0,0,,,
+2026-11-10,2026-11-14,11,2026,401858297,Georgia Tech,Clemson,Georgia Tech,away,13.5,0.5277,covers,-13.5,8.0,0,,,
+2026-11-10,2026-11-14,11,2026,401858525,Nebraska,Rutgers,Rutgers,home,13.5,0.616,covers,13.5,8.0,0,,,
+2026-11-10,2026-11-14,11,2026,401856889,Alabama,Vanderbilt,Vanderbilt,home,16.5,0.5297,covers,16.5,4.0,0,,,
+2026-11-10,2026-11-14,11,2026,401862825,East Carolina,Charlotte,East Carolina,away,-11.5,0.5578,covers,11.5,6.0,0,,,
+2026-11-10,2026-11-14,11,2026,401862829,UAB,Temple,Temple,home,-2.5,0.5379,covers,-2.5,8.0,0,,,
+2026-11-10,2026-11-14,11,2026,401869937,Arkansas State,Coastal Carolina,Arkansas State,away,1.5,0.5295,covers,-1.5,5.0,0,,,
+2026-11-10,2026-11-14,11,2026,401856862,Kansas State,TCU,Kansas State,away,10.0,0.5796,covers,-10.0,6.0,0,,,
+2026-11-10,2026-11-14,11,2026,401862828,Tulane,Rice,Tulane,away,2.0,0.6211,covers,-2.0,4.0,0,,,
+2026-11-10,2026-11-14,11,2026,401870769,Kennesaw State,Sam Houston,Sam Houston,home,7.5,0.5039,covers,7.5,1.0,0,,,
+2026-11-10,2026-11-14,11,2026,401856888,Tennessee,Texas A&M,Tennessee,away,-2.5,0.5612,covers,2.5,9.0,0,,,
+2026-11-10,2026-11-14,11,2026,401870796,New Mexico State,Missouri State,Missouri State,home,-1.5,0.6136,covers,-1.5,5.0,0,,,
+2026-11-10,2026-11-14,11,2026,401871060,Florida International,Delaware,Delaware,home,-5.0,0.5422,covers,-5.0,5.0,0,,,
+2026-11-10,2026-11-14,11,2026,401856857,Arizona State,UCF,Arizona State,away,3.5,0.5737,covers,-3.5,7.0,0,,,
+2026-11-10,2026-11-14,11,2026,401856858,Baylor,BYU,Baylor,away,7.5,0.5941,covers,-7.5,7.0,0,,,
+2026-11-10,2026-11-14,11,2026,401856883,Missouri,Georgia,Missouri,away,15.5,0.512,covers,-15.5,4.0,0,,,
+2026-11-10,2026-11-14,11,2026,401858294,Boston College,Notre Dame,Boston College,away,29.5,0.5142,covers,-29.5,5.0,0,,,
+2026-11-10,2026-11-14,11,2026,401858295,California,Virginia,Virginia,home,-10.0,0.5065,covers,-10.0,7.0,0,,,
+2026-11-10,2026-11-14,11,2026,401858518,USC,Indiana,Indiana,home,-7.5,0.5645,covers,-7.5,8.0,0,,,
+2026-11-10,2026-11-14,11,2026,401858523,Michigan,Oregon,Michigan,away,11.0,0.5057,covers,-11.0,6.0,0,,,
+2026-11-10,2026-11-14,11,2026,401862826,Florida Atlantic,Tulsa,Florida Atlantic,away,5.5,0.5398,covers,-5.5,7.0,0,,,
+2026-11-10,2026-11-14,11,2026,401864536,Nevada,Northern Illinois,Northern Illinois,home,7.0,0.585,covers,7.0,7.0,0,,,
+2026-11-10,2026-11-14,11,2026,401869952,Georgia Southern,Georgia State,Georgia State,home,5.5,0.5775,covers,5.5,8.0,0,,,
+2026-11-10,2026-11-14,11,2026,401870752,Jacksonville State,Western Kentucky,Western Kentucky,home,7.5,0.5533,covers,7.5,6.0,0,,,
+2026-11-10,2026-11-14,11,2026,401871061,Middle Tennessee,Liberty,Middle Tennessee,away,20.5,0.5418,covers,-20.5,6.0,0,,,
+2026-11-10,2026-11-14,11,2026,401860916,Fresno State,Texas State,Fresno State,away,10.0,0.619,covers,-10.0,4.0,0,,,
+2026-11-10,2026-11-14,11,2026,401856887,Ole Miss,Oklahoma,Ole Miss,away,-1.0,0.5528,covers,1.0,4.0,0,,,
+2026-11-10,2026-11-14,11,2026,401858521,Washington,Michigan State,Washington,away,-3.0,0.586,covers,3.0,5.0,0,,,
+2026-11-10,2026-11-14,11,2026,401871099,Southern Miss,Louisiana Tech,Southern Miss,away,17.5,0.5419,covers,-17.5,1.0,0,,,
+2026-11-10,2026-11-14,11,2026,401856861,Kansas,West Virginia,West Virginia,home,-3.0,0.5149,covers,-3.0,6.0,0,,,
+2026-11-10,2026-11-14,11,2026,401860914,Oregon State,Boise State,Oregon State,away,13.5,0.7518,covers,-13.5,6.0,0,,,
+2026-11-10,2026-11-14,11,2026,401869928,App State,Marshall,Marshall,home,1.5,0.6046,covers,1.5,1.0,0,,,
+2026-11-10,2026-11-14,11,2026,401856884,Florida,Kentucky,Kentucky,home,-3.5,0.5307,covers,-3.5,8.0,0,,,
+2026-11-10,2026-11-14,11,2026,401858298,Louisville,North Carolina,Louisville,away,-3.5,0.5214,covers,3.5,9.0,0,,,
+2026-11-10,2026-11-14,11,2026,401858524,Minnesota,Penn State,Minnesota,away,9.5,0.5415,covers,-9.5,5.0,0,,,
+2026-11-10,2026-11-14,11,2026,401864538,San José State,Air Force,Air Force,home,-10.5,0.501,covers,,0.0,0,,,
+2026-11-10,2026-11-14,11,2026,401871100,Troy,South Alabama,South Alabama,home,-3.0,0.5497,covers,-3.0,5.0,0,,,
+2026-11-10,2026-11-14,11,2026,401856864,Utah,Arizona,Utah,away,-2.5,0.5206,covers,2.5,6.0,0,,,
+2026-11-10,2026-11-14,11,2026,401856885,Texas,LSU,Texas,away,3.5,0.6125,covers,-3.5,8.0,0,,,
+2026-11-10,2026-11-14,11,2026,401858299,Stanford,Virginia Tech,Stanford,away,15.5,0.5778,covers,-15.5,3.0,0,,,
+2026-11-10,2026-11-14,11,2026,401858519,Purdue,Iowa,Iowa,home,-17.0,0.624,covers,-17.0,4.0,0,,,
+2026-11-10,2026-11-14,11,2026,401864539,UNLV,New Mexico,UNLV,away,14.0,0.5656,covers,-14.0,8.0,0,,,
+2026-11-10,2026-11-14,11,2026,401856882,South Carolina,Arkansas,South Carolina,away,-7.5,0.5244,covers,7.5,7.0,0,,,
+2026-11-10,2026-11-14,11,2026,401862827,North Texas,UTSA,North Texas,away,-2.0,0.5303,covers,2.0,4.0,0,,,
+2026-11-10,2026-11-14,11,2026,401856863,Texas Tech,Oklahoma State,Texas Tech,away,3.5,0.645,covers,-3.5,9.0,0,,,
+2026-11-10,2026-11-14,11,2026,401860915,Utah State,San Diego State,San Diego State,home,2.5,0.597,covers,2.5,8.0,0,,,
+2026-11-10,2026-11-14,11,2026,401864540,Wyoming,UTEP,Wyoming,away,-7.5,0.6207,covers,7.5,7.0,0,,,
+2026-11-10,2026-11-14,11,2026,401860917,Colorado State,Washington State,Washington State,home,-9.5,0.6272,covers,-9.5,8.0,0,,,

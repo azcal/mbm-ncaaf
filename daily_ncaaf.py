@@ -461,6 +461,48 @@ def load_hist():
     g["date"] = E.game_day(g.start_date)
     return g
 
+MKT_CACHE = os.path.join(LOGS, "market_cache.json")
+MKT_CACHE_MAX_H = 14
+SLOT = os.environ.get("MBM_SLOT", "manual")
+
+
+def _local_now():
+    try:
+        from zoneinfo import ZoneInfo
+        return dt.datetime.now(ZoneInfo("America/Edmonton"))
+    except Exception:
+        return dt.datetime.utcnow()
+
+
+def market_for_run():
+    """market_spreads(), bought once a day. The afternoon run reuses the morning's lines when
+    they are under 14 hours old, which halves this board's Odds API spend. The key is shared
+    with mbm-nfl and mbm-data and the three together were emptying the month's 500 credits
+    a week early (2026-11-26 audit). Falls back to a fresh pull if there is no usable copy."""
+    now = _local_now()
+    if SLOT == "pm" and os.path.exists(MKT_CACHE):
+        try:
+            c = json.load(open(MKT_CACHE))
+            age_h = (now - dt.datetime.fromisoformat(c["ts"])).total_seconds() / 3600
+            if 0 <= age_h <= MKT_CACHE_MAX_H and c.get("lines"):
+                out = {tuple(k.split("|")): tuple(v) for k, v in c["lines"].items()}
+                print(f"market: {len(out)} game(s) from this morning's pull "
+                      f"({age_h:.1f}h old), no credits spent")
+                return out
+        except Exception as ex:
+            print("market cache unreadable, pulling fresh:", type(ex).__name__)
+    out = market_spreads()
+    if out:
+        try:
+            os.makedirs(LOGS, exist_ok=True)
+            json.dump({"ts": now.isoformat(timespec="seconds"),
+                       "lines": {"|".join(k): list(v) for k, v in out.items()}},
+                      open(MKT_CACHE, "w"), indent=1)
+        except Exception as ex:
+            print("market cache not written:", type(ex).__name__)
+    return out
+
+
 def fetch_2026():
     rows, bad = [], []
     months = dt.date.today().month
@@ -532,6 +574,19 @@ def run(today_str):
     hist = load_hist()
     cur = fetch_2026()
     done26 = cur[cur.completed] if len(cur) else cur
+    # This board's history IS the ESPN feed, so there is no second source to compare it with.
+    # What can be checked is that the feed answered at all: fetch_2026 swallows every
+    # failed week, so an outage used to produce an empty season and a board priced on last
+    # year's ratings with no error anywhere. In season, no completed games is a failure.
+    print(f"MBM-CHECK BEGIN NCAAF {today_str}")
+    _in_season = (today.month >= 9) or (today.month == 1 and today.day <= 25)
+    if _in_season and not len(done26):
+        print("MBM-CHECK FAIL source | NCAAF: ESPN returned no completed 2026 games")
+        if not FR.override():
+            raise SystemExit("NCAAF: refusing to board without this season's results")
+    else:
+        _nw = pd.to_datetime(done26.date).max().date() if len(done26) else None
+        print(f"MBM-CHECK OK source | NCAAF: {len(done26)} completed game(s) this season, newest {_nw}")
     # `~completed` is not enough: a game being played right now is completed=False and
     # would be boarded at a pre-game price. state is "pre", "in" or "post".
     _pre = cur.state.eq("pre") if "state" in cur.columns else ~cur.completed
@@ -591,7 +646,7 @@ def run(today_str):
         # land on a whole number where a game could push.
         sp_line = spread.median_line(sp_ph, sp_Ph, sp_Pa, grid=MED_GRID)
         _c3 = lambda k: spread.cover3(sp_ph, sp_Ph, sp_Pa, k)
-        mkt = market_spreads()
+        mkt = market_for_run()
         # Second tier for whatever the paid feed missed, which on a college card is the
         # G5 and FCS-opponent end. Asked only about those games, never the whole slate.
         _gap = [(r.game_id, r.away, r.home) for r in rows.itertuples()

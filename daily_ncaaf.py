@@ -464,6 +464,8 @@ def load_hist():
 MKT_CACHE = os.path.join(LOGS, "market_cache.json")
 MKT_CACHE_MAX_H = 14
 SLOT = os.environ.get("MBM_SLOT", "manual")
+# Default False: cover probabilities against the book line are logged, not published.
+PUBLISH_MARKET_COVER = bool(SPEC.get("publish_market_cover", False))
 
 
 def _local_now():
@@ -828,15 +830,43 @@ def run(today_str):
                 ctx = (f"no market line, model's own line \u00b7 "
                        f"{r.pick_team} wins outright "
                        f"{(r.p_home if r.pick_side == 'home' else 1 - r.p_home):.0%}")
+            fc = None
+            if covers and not PUBLISH_MARKET_COVER:
+                # A market row is published as the model's own line and win probability,
+                # with the book number as context, and carries no price (2026-11-26 model
+                # audit). These rows used to read "Back <team> at <price> or better", the
+                # price coming from the cover probability at the book line. Live in 2026
+                # those claims averaged 58.7% and hit 46.5% (302-348), log loss 0.730
+                # against a coin's 0.693: the model has shown nothing at a number the
+                # market has already set. Its winner probabilities are calibrated (72.0%
+                # claimed, 71.4% hit), so that is what is shown. predictions.csv, picks.csv
+                # and the Monday paper ledger still log the raw pick.
+                _fh = float(r.p_home) >= 0.5
+                _tm = r.home if _fh else r.away
+                _ln = round(float(-r.margin_m if _fh else r.margin_m) * 2) / 2 + 0.0
+                fc = (str(_tm), BF.handicap(_ln), float(r.p_home) if _fh else 1 - float(r.p_home),
+                      ("no market line" if (r.book_line != r.book_line or int(r.book_total) == 0)
+                       else f"market {r.home} {BF.handicap(float(r.book_line))} ({_src})"
+                       + (" \u00b7 weak consensus" if int(r.book_total) > 1
+                          and r.book_count / r.book_total < 0.5 else "")))
             rows.append((str(r.date)[:10], f"{r.away} @ {r.home}",
                          str(r.pick_team), float(r.pick_prob), r.game_id, r.week, spr,
-                         vb, ctx))
+                         vb, ctx, fc))
         wg = max([len(x[1]) for x in rows] + [10])
         # Pad the whole "TEAM -6.5" token, not just the handicap. Padding the number alone
         # left the win column ragged, because the team names differ by fifteen characters.
         wp = max([len(f"{x[2]} {x[6]}") for x in rows] + [10])
-        for d_, gm, pk, q, gid, wk, spr, vb, ctx in rows:
+        for d_, gm, pk, q, gid, wk, spr, vb, ctx, fc in rows:
             cal = wk < CAL_UNLOCK_WEEK
+            if fc is not None:
+                _tm, _hc, _pw, _ctx = fc
+                ln = (f"{d_}  {gm:<{wg}}  {(_tm + ' ' + _hc):<{wp}}  win {_pw:.1%}\n"
+                      f"      note: {_ctx}")
+                if cal:
+                    cal_n += 1
+                push[gid] = {"line": ln, "min_odds": BF.STD_SPREAD_ODDS,
+                             "match": f"{_tm} {_hc} {_pw:.0%}", "cal": bool(cal)}
+                continue
             if not cal and BF.min_odds(q) < BF.PRICE_FLOOR:
                 skipped += 1
                 continue

@@ -461,6 +461,50 @@ def load_hist():
     g["date"] = E.game_day(g.start_date)
     return g
 
+MKT_CACHE = os.path.join(LOGS, "market_cache.json")
+MKT_CACHE_MAX_H = 14
+SLOT = os.environ.get("MBM_SLOT", "manual")
+# Default False: cover probabilities against the book line are logged, not published.
+PUBLISH_MARKET_COVER = bool(SPEC.get("publish_market_cover", False))
+
+
+def _local_now():
+    try:
+        from zoneinfo import ZoneInfo
+        return dt.datetime.now(ZoneInfo("America/Edmonton"))
+    except Exception:
+        return dt.datetime.utcnow()
+
+
+def market_for_run():
+    """market_spreads(), bought once a day. The afternoon run reuses the morning's lines when
+    they are under 14 hours old, which halves this board's Odds API spend. The key is shared
+    with mbm-nfl and mbm-data and the three together were emptying the month's 500 credits
+    a week early (2026-11-26 audit). Falls back to a fresh pull if there is no usable copy."""
+    now = _local_now()
+    if SLOT == "pm" and os.path.exists(MKT_CACHE):
+        try:
+            c = json.load(open(MKT_CACHE))
+            age_h = (now - dt.datetime.fromisoformat(c["ts"])).total_seconds() / 3600
+            if 0 <= age_h <= MKT_CACHE_MAX_H and c.get("lines"):
+                out = {tuple(k.split("|")): tuple(v) for k, v in c["lines"].items()}
+                print(f"market: {len(out)} game(s) from this morning's pull "
+                      f"({age_h:.1f}h old), no credits spent")
+                return out
+        except Exception as ex:
+            print("market cache unreadable, pulling fresh:", type(ex).__name__)
+    out = market_spreads()
+    if out:
+        try:
+            os.makedirs(LOGS, exist_ok=True)
+            json.dump({"ts": now.isoformat(timespec="seconds"),
+                       "lines": {"|".join(k): list(v) for k, v in out.items()}},
+                      open(MKT_CACHE, "w"), indent=1)
+        except Exception as ex:
+            print("market cache not written:", type(ex).__name__)
+    return out
+
+
 def fetch_2026():
     rows, bad = [], []
     months = dt.date.today().month
@@ -532,6 +576,19 @@ def run(today_str):
     hist = load_hist()
     cur = fetch_2026()
     done26 = cur[cur.completed] if len(cur) else cur
+    # This board's history IS the ESPN feed, so there is no second source to compare it with.
+    # What can be checked is that the feed answered at all: fetch_2026 swallows every
+    # failed week, so an outage used to produce an empty season and a board priced on last
+    # year's ratings with no error anywhere. In season, no completed games is a failure.
+    print(f"MBM-CHECK BEGIN NCAAF {today_str}")
+    _in_season = (today.month >= 9) or (today.month == 1 and today.day <= 25)
+    if _in_season and not len(done26):
+        print("MBM-CHECK FAIL source | NCAAF: ESPN returned no completed 2026 games")
+        if not FR.override():
+            raise SystemExit("NCAAF: refusing to board without this season's results")
+    else:
+        _nw = pd.to_datetime(done26.date).max().date() if len(done26) else None
+        print(f"MBM-CHECK OK source | NCAAF: {len(done26)} completed game(s) this season, newest {_nw}")
     # `~completed` is not enough: a game being played right now is completed=False and
     # would be boarded at a pre-game price. state is "pre", "in" or "post".
     _pre = cur.state.eq("pre") if "state" in cur.columns else ~cur.completed
@@ -591,7 +648,7 @@ def run(today_str):
         # land on a whole number where a game could push.
         sp_line = spread.median_line(sp_ph, sp_Ph, sp_Pa, grid=MED_GRID)
         _c3 = lambda k: spread.cover3(sp_ph, sp_Ph, sp_Pa, k)
-        mkt = market_spreads()
+        mkt = market_for_run()
         # Second tier for whatever the paid feed missed, which on a college card is the
         # G5 and FCS-opponent end. Asked only about those games, never the whole slate.
         _gap = [(r.game_id, r.away, r.home) for r in rows.itertuples()
@@ -773,15 +830,43 @@ def run(today_str):
                 ctx = (f"no market line, model's own line \u00b7 "
                        f"{r.pick_team} wins outright "
                        f"{(r.p_home if r.pick_side == 'home' else 1 - r.p_home):.0%}")
+            fc = None
+            if covers and not PUBLISH_MARKET_COVER:
+                # A market row is published as the model's own line and win probability,
+                # with the book number as context, and carries no price (2026-11-26 model
+                # audit). These rows used to read "Back <team> at <price> or better", the
+                # price coming from the cover probability at the book line. Live in 2026
+                # those claims averaged 58.7% and hit 46.5% (302-348), log loss 0.730
+                # against a coin's 0.693: the model has shown nothing at a number the
+                # market has already set. Its winner probabilities are calibrated (72.0%
+                # claimed, 71.4% hit), so that is what is shown. predictions.csv, picks.csv
+                # and the Monday paper ledger still log the raw pick.
+                _fh = float(r.p_home) >= 0.5
+                _tm = r.home if _fh else r.away
+                _ln = round(float(-r.margin_m if _fh else r.margin_m) * 2) / 2 + 0.0
+                fc = (str(_tm), BF.handicap(_ln), float(r.p_home) if _fh else 1 - float(r.p_home),
+                      ("no market line" if (r.book_line != r.book_line or int(r.book_total) == 0)
+                       else f"market {r.home} {BF.handicap(float(r.book_line))} ({_src})"
+                       + (" \u00b7 weak consensus" if int(r.book_total) > 1
+                          and r.book_count / r.book_total < 0.5 else "")))
             rows.append((str(r.date)[:10], f"{r.away} @ {r.home}",
                          str(r.pick_team), float(r.pick_prob), r.game_id, r.week, spr,
-                         vb, ctx))
+                         vb, ctx, fc))
         wg = max([len(x[1]) for x in rows] + [10])
         # Pad the whole "TEAM -6.5" token, not just the handicap. Padding the number alone
         # left the win column ragged, because the team names differ by fifteen characters.
         wp = max([len(f"{x[2]} {x[6]}") for x in rows] + [10])
-        for d_, gm, pk, q, gid, wk, spr, vb, ctx in rows:
+        for d_, gm, pk, q, gid, wk, spr, vb, ctx, fc in rows:
             cal = wk < CAL_UNLOCK_WEEK
+            if fc is not None:
+                _tm, _hc, _pw, _ctx = fc
+                ln = (f"{d_}  {gm:<{wg}}  {(_tm + ' ' + _hc):<{wp}}  win {_pw:.1%}\n"
+                      f"      note: {_ctx}")
+                if cal:
+                    cal_n += 1
+                push[gid] = {"line": ln, "min_odds": BF.STD_SPREAD_ODDS,
+                             "match": f"{_tm} {_hc} {_pw:.0%}", "cal": bool(cal)}
+                continue
             if not cal and BF.min_odds(q) < BF.PRICE_FLOOR:
                 skipped += 1
                 continue

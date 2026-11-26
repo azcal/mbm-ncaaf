@@ -25,7 +25,14 @@ LOG = os.path.join(HERE, "logs", "predictions.csv")
 OUT = os.path.join(HERE, "logs", "paper_open.csv")
 TRIGGER = 0.65
 BAR_HIT, BAR_N = 0.55, 100
-TODAY = dt.date.today()
+# Mountain time, not the runner's UTC clock. A Monday-evening run is already Tuesday in UTC,
+# and the rule only counts rows snapped on its own weekday, so late runs logged every game
+# with trigger=0 (NCAAF weeks 11 to 13 and NFL week 12, found in the 2026-11-26 audit).
+try:
+    from zoneinfo import ZoneInfo
+    TODAY = dt.datetime.now(ZoneInfo("America/Edmonton")).date()
+except Exception:
+    TODAY = dt.date.today()
 COLS = ["snap_date", "date", "week", "season", "game_id", "away", "home", "pick_team", "pick_side",
         "pick_line", "pick_prob", "pick_claim", "book_line", "book_count", "trigger",
         "result", "pnl", "graded"]
